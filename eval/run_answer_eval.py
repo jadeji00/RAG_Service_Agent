@@ -677,6 +677,7 @@ def to_markdown(payload: dict) -> str:
         "- 报告题都显式给出 user_id / month；`get_user_id` / `get_current_month` 的随机 mock"
         "分支未被覆盖。",
         "- 报告字段覆盖是词面匹配（标签 + 数值），不是语义等价；语义忠实度由 LLM judge 判断。",
+        "- 报告生成耗时主要来自最终输出长度；当前只统计总耗时，未拆首 token 与流式延迟。",
         "- answerable / negative 走 `RagSummarizeService` 的 Top-3 生成链路；检索基线用 k=8，"
         "两者口径不同，不能直接相减。",
         "",

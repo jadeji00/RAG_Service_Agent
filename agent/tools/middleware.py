@@ -9,6 +9,16 @@ from langgraph.types import Command
 from utils.logger_handler import logger
 from utils.prompt_loader import load_system_prompts,load_report_prompts
 
+# 只要进入报告取数链路就切换报告提示词。fill_context_for_report 是显式标记，
+# fetch_external_data 是兜底：模型跳过标记工具时，取到数据后仍能切到报告提示词。
+REPORT_CONTEXT_TOOLS = {"fill_context_for_report", "fetch_external_data"}
+
+
+def should_switch_report(tool_name: str) -> bool:
+    """工具执行成功后，是否需要把上下文切到报告场景。"""
+    return tool_name in REPORT_CONTEXT_TOOLS
+
+
 @wrap_tool_call
 def monitor_tool(
     # 请求的数据封装
@@ -22,7 +32,7 @@ def monitor_tool(
     try:
         result = handler(request)
         logger.info(f"[tool monitor]工具{request.tool_call['name']}调用成功")
-        if request.tool_call['name'] == 'fill_context_for_report':
+        if should_switch_report(request.tool_call['name']):
             request.runtime.context['report'] = True
         return result
     except Exception as e:
