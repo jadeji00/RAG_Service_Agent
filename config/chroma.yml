@@ -3,7 +3,8 @@ collection_name: agent
 persist_directory: chroma_db
 k: 3
 data_path: data
-allow_knowledge_file_type: ['txt', 'pdf']
+# PDF 仅作本地参考：内容已由两份 txt 覆盖，且授权状态不适合公开入库。
+allow_knowledge_file_type: ['txt']
 
 chunk_size: 200
 chunk_overlap: 20

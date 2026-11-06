@@ -85,6 +85,10 @@ class VectorStoreService:
     def _count(self) -> int:
         return self.vector_store._collection.count()
 
+    def count(self) -> int:
+        """当前集合里的向量数，供评测和健康检查使用。"""
+        return self._count()
+
     def load_document(self) -> int:
         """把 data 目录里的文件同步进向量库，返回本次新增的 chunk 数。
 
