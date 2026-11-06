@@ -27,7 +27,7 @@ AI_RAG_Agent/
 ├─ prompts/                # 系统提示词、RAG 提示词、报告提示词
 ├─ config/                 # 模型、向量库、提示词、Agent 配置
 ├─ data/                   # 知识库文件 + external/records.csv
-├─ eval/                   # 80 题评测集、检索评测脚本与基线
+├─ eval/                   # 80 题评测集、检索/回答级评测脚本与基线
 ├─ docs/                   # 设计、踩坑、测试说明
 ├─ tests/                  # 纯函数与数据校验测试
 ├─ utils/                  # 配置、日志、路径、文件、提示词加载
@@ -98,14 +98,15 @@ python -m agent.react_agent
 
 ## 评测
 
-仓库自带 80 题评测集（55 道可回答 / 15 道负样本 / 10 道报告），并把「检索对不对」变成可复现的数字：
+仓库自带 80 题评测集（55 道可回答 / 15 道负样本 / 10 道报告），覆盖检索、回答与报告两条链路：
 
 ```bash
-python eval/run_eval.py --validate-only     # 只校验 gold 标签
-python eval/run_eval.py --ks 1,3,5,8        # 跑完整检索基线
+python eval/run_eval.py --validate-only          # 只校验 gold 标签
+python eval/run_eval.py --ks 1,3,5,8             # 检索基线
+python eval/run_answer_eval.py                   # 回答级基线（约 8 分钟）
 ```
 
-当前基线（55 道可回答、66 chunks、`text-embedding-v4`）：
+检索基线（55 道可回答、66 chunks、`text-embedding-v4`）：
 
 | 指标 | @1 | @3 | @5 | @8 |
 |---|---|---|---|---|
@@ -113,7 +114,16 @@ python eval/run_eval.py --ks 1,3,5,8        # 跑完整检索基线
 | Span MRR | 65.45% | 78.79% | 79.52% | 79.52% |
 | Source Recall | 85.45% | 100.00% | 100.00% | 100.00% |
 
-评测口径、失败题分析见 `eval/README.md`，测试分层与用例说明见 `docs/testing.md`。当前题目多来自知识库原问句，属于 easy split；下一步是 QA 感知切分、混合召回与重排。
+回答级基线（`qwen-max`，RAG Top-3，报告走完整 Agent）：
+
+| 类型 | 样本 | 通过率 | 关键指标 |
+|---|---|---|---|
+| answerable | 55 | 98.18% | 完全正确 81.82%；完全有据 98.18%；幻觉 0.00% |
+| negative | 15 | 86.67% | 拒答正确率 86.67% |
+| report | 10 | 50.00% | 字段完整 50.00%；忠实 100.00% |
+| **合计** | **80** | **90.00%** | - |
+
+报告字段用确定性规则核对（标签 + 数值 + 单位归一），语义忠实度才交给 LLM judge。当前短板是报告流程：5/10 漏调 `fill_context_for_report`，导致 `特征` 字段整体缺失。评测口径、失败题分析见 `eval/README.md`，测试分层与用例说明见 `docs/testing.md`。当前题目多来自知识库原问句，属于 easy split；下一步是修报告流程、QA 感知切分、混合召回与重排。
 
 ## 当前阶段的说明
 
