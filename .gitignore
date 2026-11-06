@@ -1,0 +1,36 @@
+# ===== 密钥（不要提交到仓库）=====
+.env
+.env.*
+!.env.example
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# ===== IDE / 系统 =====
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ===== 运行时产物 =====
+log/
+chroma_db/
+**/chroma_db/
+checkpoints/
+md5.text
+
+# ===== 前端构建产物 =====
+web/node_modules/
+web/dist/
+
+# ===== 评测原始输出（体积大，可复现，不入库）=====
+eval/results/raw/
+
+# ===== 授权状态不明的第三方资料（公开仓库不提交）=====
+data/*.pdf

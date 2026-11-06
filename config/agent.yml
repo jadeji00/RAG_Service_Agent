@@ -1,0 +1,3 @@
+external_data_path: data/external/records.csv
+# LangGraph 会话记忆（checkpointer）落盘位置
+checkpoint_db_path: checkpoints/agent_memory.sqlite3

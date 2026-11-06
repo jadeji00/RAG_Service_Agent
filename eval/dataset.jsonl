@@ -1,0 +1,10 @@
+{"id":"qa-001","type":"answerable","question":"60㎡以下的小户型选扫地机器人，重点看什么？","gold_sources":["选购指南.txt"],"gold_sections":["一、先明确需求"],"gold_answer":"60㎡以下优先看性价比；同时结合地面材质、家庭成员、是否接受基站、预算（含耗材）综合判断。","tags":["选购"]}
+{"id":"qa-002","type":"answerable","question":"扫地机器人报 E01 错误怎么处理？","gold_sources":["故障排除.txt"],"gold_sections":["一、错误代码","E01 碰撞传感器异常"],"gold_answer":"E01 表示碰撞传感器异常。断电后拍打前撞板并清理缝隙，重启机器；仍报错则联系售后。","tags":["故障","错误码"]}
+{"id":"qa-003","type":"answerable","question":"拖布多久清洗一次？","gold_sources":["扫拖一体机器人100问.txt"],"gold_sections":["【拖地与水箱】","Q3"],"gold_answer":"每次拖地后清洗；自动洗拖布的机型也要定期取出彻底清洗。","tags":["拖地","维护"]}
+{"id":"qa-004","type":"answerable","question":"滤网多久清洗一次，能不能水洗？","gold_sources":["维护保养.txt"],"gold_sections":["二、每周维护"],"gold_answer":"每周清洗一次；可水洗滤网用清水冲洗并轻拍去灰，必须完全晾干再装回。","tags":["维护","耗材"]}
+{"id":"qa-005","type":"answerable","question":"第一次使用扫地机器人需要充多久？","gold_sources":["扫地机器人100问2.txt"],"gold_sections":["【日常使用】","Q1"],"gold_answer":"建议先充满电再建图，通常需要 3–4 小时；首次建图尽量一次走完全屋。","tags":["使用","建图"]}
+{"id":"neg-001","type":"negative","question":"你们能上门修洗衣机吗？","expected":"refuse","gold_answer":"应说明只支持扫地/扫拖机器人相关问题，无法上门维修洗衣机，建议联系洗衣机品牌售后。","tags":["out_of_scope"]}
+{"id":"neg-002","type":"negative","question":"扫地机器人能帮我洗碗吗？","expected":"refuse","gold_answer":"应说明扫地机器人只做地面清洁，不能洗碗，不要编造不存在的功能。","tags":["out_of_scope"]}
+{"id":"neg-003","type":"negative","question":"能帮我订一张去上海的机票吗？","expected":"refuse","gold_answer":"应说明超出服务范围，无法订机票，可引导用户回到扫地机器人相关问题。","tags":["out_of_scope"]}
+{"id":"rep-001","type":"report","question":"帮我看看用户 1004 在 2026-10 的使用报告，主要问题和对比变化是什么？","user_id":"1004","month":"2026-10","expected_fields":["特征","清洁效率","耗材","对比"],"gold_answer":"85㎡两居、2猫、混合地面；猫砂泼洒 7 次/月、自动回充成功率 91%；主刷缠绕中度，集尘袋已更换；对比上月猫砂泼洒 -1 次/月、回充 +1%，集尘袋更换完成。","tags":["报告","宠物家庭"]}
+{"id":"rep-002","type":"report","question":"用户 1006 在 2026-07 的报告中，跨楼层和避障表现怎么样？","user_id":"1006","month":"2026-07","expected_fields":["特征","清洁效率","耗材","对比"],"gold_answer":"150㎡别墅、儿童、多层；跨楼层失败 4 次/周，玩具避障率 74%；边刷 2 次/季度更换，集尘袋约 1 个月/个；对比上月跨楼层失败 +1 次/周、玩具避障 -2%，原因是玩具散落增多。","tags":["报告","多层"]}

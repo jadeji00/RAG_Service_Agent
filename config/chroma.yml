@@ -1,0 +1,11 @@
+collection_name: agent
+# 代码会把它转成项目根目录下的绝对路径，避免随启动目录漂移
+persist_directory: chroma_db
+k: 3
+data_path: data
+allow_knowledge_file_type: ['txt', 'pdf']
+
+chunk_size: 200
+chunk_overlap: 20
+# 必须用双引号：YAML 单引号不会把 \n 解析成换行
+separators: ["\n\n", "\n", ".", "!", "?", "。", "！", "？", "|", ""]
