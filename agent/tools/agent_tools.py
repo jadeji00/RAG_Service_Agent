@@ -95,10 +95,5 @@ def fetch_external_data(user_id: str, month: str) -> str:
     return json.dumps(record, ensure_ascii=False)
 
 
-@tool(description="无入参，无返回值，调用后触发中间件自动为报告生成的场景动态注入上下文信息，为后续提示词切换提供上下文信息")
-def fill_context_for_report():
-    return "fill_context_for_report已调用"
-
-
 # if __name__ == '__main__':
 #     print(fetch_external_data('1006', '2026-07'))

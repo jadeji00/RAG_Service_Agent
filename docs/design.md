@@ -18,14 +18,17 @@
 ```mermaid
 flowchart LR
     U[Streamlit 页面] --> A[ReactAgent]
-    A --> G[create_agent]
-    G --> M[中间件<br/>日志 / 工具异常兜底 / 报告提示词切换]
+    A --> RQ{is_report_query<br/>规则路由}
+    RQ -->|报告| RP[report_pipeline<br/>解析参数 → 取数 → 单次写作]
+    RQ -->|其他| G[create_agent]
+    G --> M[中间件<br/>日志 / 工具异常兜底 / 报告提示词兜底切换]
     G --> T[工具集]
     T --> R[rag_summarize]
     R --> V[VectorStoreService<br/>Chroma + 增量同步]
     T --> C[records.csv 查询]
-    T --> S[fill_context_for_report<br/>报告意图标记]
+    RP --> C
     G --> K[(SqliteSaver<br/>thread_id 会话)]
+    RP --> K
 ```
 
 关键点：
@@ -33,7 +36,7 @@ flowchart LR
 - **Agent 内核**：LangChain 1.x `create_agent` + 三个中间件（`before_model`、`wrap_tool_call`、`dynamic_prompt`）。
 - **RAG**：Chroma 持久化 + md5 元数据增量同步；空库自愈；chunk 200 / overlap 20。
 - **会话**：`SqliteSaver` + `thread_id`，刷新或重启后可恢复；历史全量回灌（待压缩）。
-- **报告线**：模型调用空壳工具 `fill_context_for_report`，中间件写 `runtime.context`，再切换报告提示词。
+- **报告线**：`is_report_query` 判断意图后走确定性 `report_pipeline`——解析/补齐 `user_id`、`month`，直接 `fetch_external_data`，把 CSV 记录注入报告提示词，调用一次 `temperature=0` 模型写作；模型不参与工具选择。路由未命中的报告请求才回退 ReAct，`fetch_external_data` 成功仍会兜底切换报告提示词。`fill_context_for_report` 已删除。
 
 ## 3. 目标架构（计划中）
 
@@ -44,7 +47,7 @@ flowchart LR
     F --> A[Agent 服务]
     A --> RT[意图路由<br/>qa / report / out_of_scope]
     RT --> QA[问答子图]
-    RT --> RP[报告子图]
+    RT --> RP[确定性报告流程<br/>已实施]
     QA --> HY[混合检索<br/>BM25 + 向量 + RRF]
     HY --> RR[重排]
     RR --> AN[生成 + 引用]
@@ -60,12 +63,12 @@ flowchart LR
 
 | # | 决策 | 备选方案 | 为什么选它 | 代价 / 风险 | 状态 |
 |---|---|---|---|---|---|
-| 1 | **评测集先行**：先定 80–100 题与指标，再做优化 | 先堆功能，最后补评测 | 没有基线就无法归因；面试追问 L4 需要可复现数字 | 前期看不到「功能变多」的成就感 | **已实施**：80 题 + 检索基线 + 回答级基线（2026-11-06） |
+| 1 | **评测集先行**：先定 80–100 题与指标，再做优化 | 先堆功能，最后补评测 | 没有基线就无法归因；面试追问 L4 需要可复现数字 | 前期看不到「功能变多」的成就感 | **已实施**：easy 80 题 + hard 25 题、检索/回答基线、pass^3（2026-11-07） |
 | 2 | **检索与生成拆开**：`retrieve` / `build_context` / `answer` 三个方法 | 保留 `rag_summarize` 一条龙 | 召回与生成可分别评测；换重排/换模型不影响另一半 | 多一层调用约定，调用方要自己串 | **已实施** |
 | 3 | **按 QA 结构切分**，gold 标到 `source + 小节/题号` | 按固定字符数硬切；gold 标 chunk id | 问答对不能被切断；chunk id 会随切分策略变化而失效 | 需要针对数据写切分规则与校验 | 计划中 |
 | 4 | **BM25 + 向量混合召回，RRF 融合** | 纯向量 Top-k；分数加权融合 | 型号、错误码等关键词靠 BM25，语义问题靠向量；RRF 不需调分数尺度 | 多一路索引与延迟；需要真实 BM25 实现，不能拿向量库冒充 | 计划中 |
 | 5 | **交叉编码器重排**（Top-20 → Top-5） | 不重排；用 LLM 重排 | 重排通常比换 embedding 性价比高；LLM 重排贵且慢 | 增加 100–300ms；模型需可离线/可替换 | 计划中 |
-| 6 | **显式路由 + 报告子图**，不靠模型「自觉」 | 一个 ReAct 循环里塞所有工具 | 报告与问答的工具面、提示词、失败处理不同；显式路由可测 | 需要维护路由准确率与兜底分支 | **部分实施**：`fetch_external_data` 兜底切换上下文 + 报告模板；子图待做 |
+| 6 | **显式路由 + 确定性报告子流程**，不靠模型「自觉」 | 一个 ReAct 循环里塞所有工具 | 报告与问答的工具面、提示词、失败处理不同；显式路由可测 | 规则路由需要维护覆盖率和兜底分支 | **已实施**：`is_report_query` → `report_pipeline`（解析参数 → 固定取数 → 单次写作）；路由未命中回退 ReAct。工具序列由代码保证，`fill_context_for_report` 已删除 |
 | 7 | **SQLite checkpointer 起步** | 直接上 Postgres/Redis | 单机 demo 足够；接口一致，后续可替换 | 多实例不可用；需限制历史长度 | **已实施**（压缩待做） |
 | 8 | **SSE + 统一事件契约**（`meta/delta/tool/done/error`） | WebSocket；前端轮询 | 单向流式足够；HTTP 基础设施简单；事件可断言、可回放 | 断线重连与取消要自己处理 | 计划中 |
 | 9 | **薄前端**：单页静态 HTML/JS | React SPA、低代码平台 | 简历重点是 Agent/RAG 深度，不是前端工程量 | 页面表现力有限 | 计划中 |
@@ -79,14 +82,14 @@ flowchart LR
 
 ## 6. 里程碑与验收
 
-当前进度：**M1 已完成**（80 题、检索基线、回答级基线、27 个单测）；M2–M5 未开始。
+当前进度：**M1 已完成**（80 题 easy split + 25 题 hard split、检索/回答级基线、pass^k、39 个单测）；报告子流程已提前落地；M2–M5 未开始。
 
 | 阶段 | 内容 | 验收证据 |
 |---|---|---|
 | M1 | 评测集 + `run_eval.py` / `run_answer_eval.py` + 基线报告 | 题量、标注方式、Recall@k / 拒答正确率 / faithfulness 基线表；报告字段与延迟前后对比 |
 | M2 | QA 切分 + 混合召回 + 重排 | 同一评测集前后对比；延迟代价一并报 |
 | M3 | FastAPI + SSE + 薄前端 | 可复现的启动命令；事件序列截图/录屏 |
-| M4 | 路由 + 报告子图 + 工具护栏 | 越界拒答、工具失败降级、循环熔断的演示 |
+| M4 | 工具护栏 + 循环熔断 + 路由覆盖率 | 越界拒答、工具失败降级、循环熔断的演示；报告确定性流程已提前完成 |
 | M5 | Trace + 成本 + 部署 | 一次真实请求的 span 树；单次成本与优化前后对比 |
 
 ## 7. 已知短板（当前）
@@ -96,10 +99,10 @@ flowchart LR
 3. Top-3 纯向量召回，无阈值、无重排、无混合检索。
 4. 用户、月份、位置工具仍是随机 mock。
 5. 会话历史全量回灌，无截断/摘要。
-6. 回答级评测已有单次基线，仍缺 pass^k、hard split、trace、token 与成本账本。
+6. 回答级评测已有 easy 单次基线、hard split 与 hard pass^3；仍缺 easy 全量 pass^k、trace、token 与成本账本。
 7. 模块导入即构造模型与 RAG 服务，启动失败不易被页面捕获。
-8. 报告流程仍可能漏调 `fill_context_for_report`；已用 `fetch_external_data` 兜底切换提示词，残余影响是工具序列正确率而非字段缺失（P7）。
-9. 报告生成仍需「1 轮取数 + 1 轮写作」，最终输出 400–600 字，P50 约 12 秒；提示词只能压缩输出，彻底降延迟要靠报告子图合并轮次、流式输出或更快的模型。
+8. ~~报告流程仍可能漏调 `fill_context_for_report`~~：已改为确定性报告子流程，正常报告不再经过 ReAct，`fill` 工具已删除；仅规则路由未命中的请求走 ReAct 兜底（P7）。
+9. 报告生成已由确定性流程固定为「取数 1 次 + 写作 1 次」，P50 从 12.5 秒降到 **7.25 秒**；剩余成本仍是 400–600 字最终输出，要稳定压到 5 秒内需要流式输出或更快的报告模型。
 
 > 这些短板会在 M1–M5 中逐项处理；`docs/pitfalls.md` 记录已经踩过的坑与修复状态。
 
@@ -115,5 +118,5 @@ prompts/      提示词
 data/         知识库与 mock 业务数据（见 data/README.md）
 eval/         评测集、评测脚本、结果
 docs/         设计、踩坑、演示材料
-tests/        单元测试（计划中）
+tests/        纯函数与数据契约单测
 ```

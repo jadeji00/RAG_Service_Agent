@@ -5,10 +5,10 @@ from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
+from agent.report_pipeline import generate_report, is_report_query
 from agent.tools.agent_tools import (
     ensure_rag_ready,
     fetch_external_data,
-    fill_context_for_report,
     get_current_month,
     get_user_id,
     get_user_location,
@@ -42,7 +42,7 @@ class ReactAgent:
             model=chat_model,
             tools=[rag_summarize, get_weather, get_user_location,
                    get_user_id, get_current_month,
-                   fetch_external_data, fill_context_for_report],
+                   fetch_external_data],
             system_prompt=load_system_prompts(),
             middleware=[monitor_tool, log_before_model, report_prompt_switch],
             checkpointer=self.checkpointer,
@@ -67,7 +67,43 @@ class ReactAgent:
         logger.info(f"[记忆] 使用 SQLite checkpointer：{db_path}")
         return checkpointer, conn
 
+    def generate_report(
+        self,
+        query: str,
+        user_id: str | None = None,
+        month: str | None = None,
+    ) -> dict:
+        """走确定性报告子流程，不经过 ReAct 的工具选择。"""
+        return generate_report(query, user_id=user_id, month=month)
+
+    def _remember_exchange(self, query: str, answer: str, thread_id: str) -> None:
+        """报告子流程不经过 create_agent，手动把一问一答写回同一个 thread。"""
+        try:
+            self.agent.update_state(
+                {"configurable": {"thread_id": thread_id}},
+                {
+                    "messages": [
+                        HumanMessage(content=query),
+                        AIMessage(content=answer),
+                    ]
+                },
+            )
+        except Exception as e:
+            logger.warning(f"[记忆] 写入报告会话失败：{e}")
+
     def execute_stream(self, query: str, thread_id: str = "default"):
+        # 报告请求先走确定性流程：固定取数 + 单次写作，不依赖模型选工具。
+        if is_report_query(query):
+            try:
+                result = self.generate_report(query)
+                answer = str(result.get("answer", "")).strip()
+                if answer:
+                    self._remember_exchange(query, answer, thread_id)
+                    yield answer + "\n"
+                    return
+            except Exception as e:
+                logger.warning(f"[report pipeline] 执行失败，回退 ReAct：{e}")
+
         input_dict = {
             "messages": [
                 {"role": "user", "content": query}

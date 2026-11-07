@@ -29,13 +29,6 @@ class ReportContextSwitchTest(unittest.TestCase):
         )
         self.assertTrue(context["report"])
 
-    def test_fill_context_switches_report_context(self):
-        context = {"report": False}
-        monitor_tool.wrap_tool_call(
-            _request("fill_context_for_report", context), _ok_handler
-        )
-        self.assertTrue(context["report"])
-
     def test_rag_does_not_switch_report_context(self):
         context = {"report": False}
         monitor_tool.wrap_tool_call(_request("rag_summarize", context), _ok_handler)
@@ -53,8 +46,8 @@ class ReportContextSwitchTest(unittest.TestCase):
         self.assertFalse(context["report"])
 
     def test_should_switch_report_tool_set(self):
-        self.assertTrue(should_switch_report("fill_context_for_report"))
         self.assertTrue(should_switch_report("fetch_external_data"))
+        self.assertFalse(should_switch_report("fill_context_for_report"))
         self.assertFalse(should_switch_report("get_user_id"))
 
 

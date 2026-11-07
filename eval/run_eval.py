@@ -229,16 +229,23 @@ def to_markdown(result: dict, rows: list[dict], meta: dict) -> str:
     if len(misses) > 15:
         lines.append(f"| ... | 其余 {len(misses) - 15} 题见 JSON | - | - |")
 
+    is_hard = "hard" in str(meta.get("dataset", ""))
+    split_note = (
+        "> 本文件是 hard split：题目经过改写或跨章节组合，不照抄知识库原问句；"
+        "和 easy split 使用同一套指标，分数下降是预期结果。"
+        if is_hard
+        else "> 当前题目多来自知识库原始问句，属于 easy split；"
+        "hard split 见 `eval/dataset_hard.jsonl`。"
+    )
     lines += [
         "",
         "## 复现",
         "",
         "```bash",
-        "python eval/run_eval.py --ks 1,3,5,8",
+        f"python eval/run_eval.py --dataset {meta.get('dataset', 'eval/dataset.jsonl')} --ks 1,3,5,8",
         "```",
         "",
-        "> 注意：当前题目多来自知识库原始问句，属于 easy split；"
-        "hard split（改写问法、跨节组合）尚未加入。",
+        split_note,
         "",
     ]
     return "\n".join(lines)
@@ -283,6 +290,7 @@ def main() -> int:
     result = run_retrieval(service, rows, ks, args.limit)
     meta = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "dataset": str(dataset_path.relative_to(ROOT)),
         "collection": chroma_conf["collection_name"],
         "chunk_count": chunk_count,
         "embedding_model": rag_conf["embedding_model_name"],

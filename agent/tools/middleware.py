@@ -9,9 +9,10 @@ from langgraph.types import Command
 from utils.logger_handler import logger
 from utils.prompt_loader import load_system_prompts,load_report_prompts
 
-# 只要进入报告取数链路就切换报告提示词。fill_context_for_report 是显式标记，
-# fetch_external_data 是兜底：模型跳过标记工具时，取到数据后仍能切到报告提示词。
-REPORT_CONTEXT_TOOLS = {"fill_context_for_report", "fetch_external_data"}
+# 正常报告请求走 agent.report_pipeline，不进入 ReAct。这里的切换只服务兜底：
+# 路由没识别出报告意图、模型在普通对话里取到了使用记录时，下一次模型调用切到
+# 报告提示词，避免拿主提示词硬写报告。
+REPORT_CONTEXT_TOOLS = {"fetch_external_data"}
 
 
 def should_switch_report(tool_name: str) -> bool:

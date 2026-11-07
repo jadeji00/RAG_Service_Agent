@@ -1,0 +1,1924 @@
+{
+  "meta": {
+    "generated_at": "2026-11-07 13:42:05",
+    "run_id": "20261107133750",
+    "dataset": "eval\\dataset.jsonl",
+    "types": [
+      "report"
+    ],
+    "counts": {
+      "answerable": 55,
+      "report": 10,
+      "negative": 15
+    },
+    "collection": "agent",
+    "chunk_count": null,
+    "embedding_model": "text-embedding-v4",
+    "chat_model": "qwen-max",
+    "judge_model": "qwen-max",
+    "judge_calls": 30,
+    "judge_errors": 0,
+    "k": 3,
+    "repeat": 3
+  },
+  "summary": {
+    "answerable": {
+      "evaluated": 0,
+      "scored": 0,
+      "correct_rate": null,
+      "acceptable_rate": null,
+      "mean_correctness": null,
+      "correctness_distribution": {
+        "2": 0,
+        "1": 0,
+        "0": 0
+      },
+      "grounded_rate": null,
+      "faithful_rate": null,
+      "hallucination_rate": null,
+      "faithfulness_distribution": {
+        "2": 0,
+        "1": 0,
+        "0": 0
+      },
+      "mean_term_hit_rate": null,
+      "pass_rate": null,
+      "gen_latency_ms": {
+        "p50": null,
+        "p95": null,
+        "mean": null
+      },
+      "judge_latency_ms": {
+        "p50": null,
+        "p95": null,
+        "mean": null
+      },
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "negative": {
+      "evaluated": 0,
+      "scored": 0,
+      "refusal_accuracy": null,
+      "cue_rate": null,
+      "pass_rate": null,
+      "gen_latency_ms": {
+        "p50": null,
+        "p95": null,
+        "mean": null
+      },
+      "judge_latency_ms": {
+        "p50": null,
+        "p95": null,
+        "mean": null
+      },
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "report": {
+      "evaluated": 10,
+      "scored": 10,
+      "complete_rate": 1.0,
+      "field_coverage": {
+        "特征": {
+          "covered": 10,
+          "total": 10,
+          "rate": 1.0
+        },
+        "清洁效率": {
+          "covered": 10,
+          "total": 10,
+          "rate": 1.0
+        },
+        "耗材": {
+          "covered": 10,
+          "total": 10,
+          "rate": 1.0
+        },
+        "对比": {
+          "covered": 10,
+          "total": 10,
+          "rate": 1.0
+        }
+      },
+      "mean_field_coverage": 1.0,
+      "mean_fact_coverage": 0.97,
+      "faithful_rate": 1.0,
+      "grounded_rate": 0.9,
+      "advice_rate": 1.0,
+      "pipeline_ok_rate": 1.0,
+      "fetch_args_ok_rate": 1.0,
+      "pass_rate": 1.0,
+      "gen_latency_ms": {
+        "p50": 6590.19,
+        "p95": 8763.38,
+        "mean": 6825.38
+      },
+      "judge_latency_ms": {
+        "p50": 1107.6,
+        "p95": 1580.81,
+        "mean": 1216.26
+      },
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "overall": {
+      "evaluated": 10,
+      "passed": 10,
+      "pass_rate": 1.0,
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "pass_k": {
+      "k": 3,
+      "types": {
+        "report": {
+          "questions": 10,
+          "strict_pass_rate": 1.0,
+          "at_least_once_rate": 1.0,
+          "mean_run_pass_rate": 1.0,
+          "flaky_count": 0,
+          "flaky_ids": []
+        },
+        "overall": {
+          "questions": 10,
+          "strict_pass_rate": 1.0,
+          "at_least_once_rate": 1.0,
+          "mean_run_pass_rate": 1.0,
+          "flaky_count": 0,
+          "flaky_ids": []
+        }
+      }
+    }
+  },
+  "details": {
+    "answerable": [],
+    "negative": [],
+    "report": [
+      {
+        "id": "rep-001",
+        "type": "report",
+        "question": "帮我看看用户 1001 在 2026-10 的使用报告，主要问题和对比变化是什么？",
+        "user_id": "1001",
+        "month": "2026-10",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 65㎡公寓\n- 家庭结构: 单身\n- 地面材质: 木地板\n\n## 二、清洁效率\n- 覆盖率: 87%\n- 日均清扫面积: 47㎡\n- 漏扫区域: 茶几底部（高度不足）\n\n## 三、耗材状态\n- 主刷寿命: 剩余28天\n- 滤网状态: 正常\n- 边刷: 记录未提供\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n- 集尘袋: 记录未提供\n\n## 四、环比变化\n- 覆盖率: 下降1%\n- 日均清扫面积: 减少1㎡\n- 本月出差4天出勤减少\n\n## 五、保养建议\n1. **检查并清理主刷**: 主刷剩余寿命为28天，建议定期清理缠绕的毛发和杂物，以延长使用寿命。\n2. **优化茶几底部空间**: 由于茶几底部高度不足导致漏扫，考虑调整家具布局或更换低矮型茶几，以便机器人能够进入清扫。\n3. **滤网维护**: 目前滤网状态正常，但仍需定期清洗或更换，确保吸尘效果。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1001",
+              "month": "2026-10"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "65㎡公寓",
+                  "anchors": [
+                    "65㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "单身",
+                  "anchors": [
+                    "单身"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "木地板",
+                  "anchors": [
+                    "木地板"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:87%",
+                  "anchors": [
+                    "覆盖率",
+                    "87%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "日均清扫:47㎡",
+                  "anchors": [
+                    "日均清扫",
+                    "47㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "漏扫区域:茶几底部（高度不足）",
+                  "anchors": [
+                    "漏扫区域",
+                    "茶几底部"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "主刷寿命:剩余28天",
+                  "anchors": [
+                    "主刷寿命",
+                    "剩余28天"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网状态:正常",
+                  "anchors": [
+                    "滤网状态",
+                    "正常"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率-1%",
+                  "anchors": [
+                    "覆盖率",
+                    "-1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "日均清扫-1㎡",
+                  "anchors": [
+                    "日均清扫",
+                    "-1㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "本月出差4天出勤减少",
+                  "anchors": [
+                    "本月出差",
+                    "4天"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始记录，且提供了具体的可执行建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 7359.19,
+        "judge_latency_ms": 1032.9,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 7359.19,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 65㎡公寓\n- 家庭结构: 单身\n- 地面材质: 木地板\n\n## 二、清洁效率\n- 覆盖率: 87%\n- 日均清扫面积: 47㎡\n- 漏扫区域: 茶几底部（高度不足）\n\n## 三、耗材状态\n- 主刷寿命: 剩余28天\n- 滤网状态: 正常\n- 边刷: 记录未提供\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n- 集尘袋: 记录未提供\n\n## 四、环比变化\n- 覆盖率: 下降1%\n- 日均清扫面积: 减少1㎡\n- 本月出差4天出勤减少\n\n## 五、保养建议\n1. **检查并清理主刷**: 主刷剩余寿命为28天，建议定期清理缠绕的毛发和杂物，以延长使用寿命。\n2. **优化茶几底部空间**: 由于茶几底部高度不足导致漏扫，考虑调整家具布局或更换低矮型茶几，以便机器人能够进入清扫。\n3. **滤网维护**: 目前滤网状态正常，但仍需定期清洗或更换，确保吸尘效果。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 8100.6,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 65㎡公寓\n- 家庭结构: 单身\n- 地面材质: 木地板\n\n## 二、清洁效率\n- 覆盖率: 87%\n- 日均清扫面积: 47㎡\n- 漏扫区域: 茶几底部（高度不足）\n\n## 三、耗材状态\n- 主刷寿命: 剩余28天\n- 滤网状态: 正常\n- 边刷: 记录未提供\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n- 集尘袋: 记录未提供\n\n## 四、环比变化\n- 覆盖率: 下降1%\n- 日均清扫面积: 减少1㎡\n- 本月出差4天出勤减少\n\n## 五、保养建议\n1. **检查并清理茶几底部**: 由于茶几底部高度不足导致漏扫，建议调整家具布局或选择适合低矮空间的扫地机器人。\n2. **定期检查主刷**: 主刷剩余寿命为28天，建议提前准备更换件，确保在到期前及时更换。\n3. **保持滤网清洁**: 目前滤网状态正常，但仍需定期清洗以保证最佳性能。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 5592.41,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n65㎡公寓 | 单身 | 木地板\n\n## 二、清洁效率\n覆盖率: 87%  \n日均清扫面积: 47㎡  \n漏扫区域: 茶几底部（高度不足）\n\n## 三、耗材状态\n主刷寿命: 剩余28天  \n滤网状态: 正常\n\n## 四、环比变化\n本月为基线，暂无环比。记录中提到“本月出差4天出勤减少”，导致覆盖率下降1%，日均清扫面积减少1㎡。\n\n## 五、保养建议\n1. **清理茶几底部**: 由于茶几底部高度不足导致漏扫，建议定期手动清理该区域。\n2. **关注主刷寿命**: 主刷剩余寿命28天，建议提前准备更换新的主刷。\n3. **保持滤网清洁**: 滤网状态正常，但建议每两周检查并清理一次滤网，以确保最佳清洁效果。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      },
+      {
+        "id": "rep-002",
+        "type": "report",
+        "question": "用户 1002 在 2026-09 的清洁效率和耗材情况怎么样？",
+        "user_id": "1002",
+        "month": "2026-09",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n70㎡公寓 | 情侣 | 瓷砖\n\n## 二、清洁效率\n- **覆盖率**：89%\n- **避障失败**：1次/周（数据线）\n\n## 三、耗材状态\n- **边刷**：已更换（新）\n- **尘盒清理**：每周1次\n\n## 四、环比变化\n- **覆盖率**：增加1%\n- **避障失败**：减少1次/周\n- **边刷**：更换后贴边更稳\n\n## 五、保养建议\n1. **保持定期清理尘盒**：继续每周清理一次尘盒，以确保吸力和清洁效果。\n2. **优化障碍物管理**：尽量将数据线等小物件整理好，避免影响机器人的避障性能。\n3. **检查边刷状态**：虽然边刷是新的，但定期检查其工作状态，确保其正常运转。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1002",
+              "month": "2026-09"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "70㎡公寓",
+                  "anchors": [
+                    "70㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "情侣",
+                  "anchors": [
+                    "情侣"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "瓷砖",
+                  "anchors": [
+                    "瓷砖"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:89%",
+                  "anchors": [
+                    "覆盖率",
+                    "89%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "避障失败:1次/周（数据线）",
+                  "anchors": [
+                    "避障失败",
+                    "1次/周"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "边刷已更换（新）",
+                  "anchors": [
+                    "边刷已更换（新）"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "尘盒清理:每周1次",
+                  "anchors": [
+                    "尘盒清理",
+                    "每周1次"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率+1%",
+                  "anchors": [
+                    "覆盖率",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "避障失败-1次/周",
+                  "anchors": [
+                    "避障失败",
+                    "-1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "边刷更换后贴边更稳",
+                  "anchors": [
+                    "边刷更换后贴边更稳"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始记录，且提供了具体可执行的建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 5306.2,
+        "judge_latency_ms": 1043.91,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 5306.2,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n70㎡公寓 | 情侣 | 瓷砖\n\n## 二、清洁效率\n- **覆盖率**：89%\n- **避障失败**：1次/周（数据线）\n\n## 三、耗材状态\n- **边刷**：已更换（新）\n- **尘盒清理**：每周1次\n\n## 四、环比变化\n- **覆盖率**：增加1%\n- **避障失败**：减少1次/周\n- **边刷**：更换后贴边更稳\n\n## 五、保养建议\n1. **保持定期清理尘盒**：继续每周清理一次尘盒，以确保吸力和清洁效果。\n2. **优化障碍物管理**：尽量将数据线等小物件整理好，避免影响机器人的避障性能。\n3. **检查边刷状态**：虽然边刷是新的，但定期检查其工作状态，确保其正常运转。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 1,
+            "gen_latency_ms": 6979.72,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n70㎡公寓 | 情侣 | 瓷砖\n\n## 二、清洁效率\n- 覆盖率: 89%\n- 避障失败: 1次/周（数据线）\n\n## 三、耗材状态\n- 边刷: 已更换（新）\n- 尘盒: 清理频率为每周1次\n- 主刷: 记录未提供\n- 滤网: 记录未提供\n- 拖布: 记录未提供\n- 集尘袋: 记录未提供\n\n## 四、环比变化\n- 覆盖率: 提升了1%\n- 避障失败: 减少了1次/周\n- 边刷更换后贴边更稳\n\n## 五、保养建议\n1. 继续保持每周清理尘盒的频率，以保证吸力和清洁效果。\n2. 定期检查并清理主刷和滤网，防止缠绕物影响机器人的正常工作。\n3. 注意整理地面杂物，特别是电线等易造成避障失败的物品。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 6360.16,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 70㎡公寓\n- 家庭结构: 情侣\n- 地面材质: 瓷砖\n\n## 二、清洁效率\n- 覆盖率: 89%\n- 避障失败: 1次/周（数据线）\n\n## 三、耗材状态\n- 边刷: 已更换（新）\n- 尘盒: 清理频率为每周1次\n\n## 四、环比变化\n- 覆盖率: +1%\n- 避障失败: -1次/周\n- 边刷: 更换后贴边更稳\n\n## 五、保养建议\n1. **定期清理尘盒**: 继续保持每周清理一次尘盒，以确保机器人的吸力和清洁效果。\n2. **检查并整理地面障碍物**: 由于避障失败主要由数据线引起，建议将数据线等小物件整理好，避免影响清扫路径。\n3. **关注边刷状态**: 边刷已更换为新的，贴边清扫效果有所提升，请继续观察其使用情况，如有磨损及时更换。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      },
+      {
+        "id": "rep-003",
+        "type": "report",
+        "question": "分析用户 1003 在 2026-11 的使用报告，和上月相比有哪些变化？",
+        "user_id": "1003",
+        "month": "2026-11",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 90㎡两居\n- 家庭结构: 1狗\n- 地面材质: 短毛地毯\n\n## 二、清洁效率\n- 毛发清理: 94%\n- 地毯增压使用: 17次/月\n\n## 三、耗材状态\n- 胶刷寿命: 剩余8天\n- 滤网状态: 正常\n\n## 四、环比变化\n- 毛发清理: 提高2%\n- 地毯增压使用: 增加2次/月\n- 胶刷寿命: 临近更换\n\n## 五、保养建议\n1. **及时更换胶刷**：胶刷剩余寿命为8天，建议尽快购买并更换新的胶刷。\n2. **定期检查滤网**：尽管当前滤网状态正常，仍需定期检查以确保其持续有效。\n3. **增加地毯增压频率**：本月地毯增压使用次数有所增加，若家中地毯污垢较多，可适当提高地毯增压的频率。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1003",
+              "month": "2026-11"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "90㎡两居",
+                  "anchors": [
+                    "90㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "1狗",
+                  "anchors": [
+                    "1"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "短毛地毯",
+                  "anchors": [
+                    "短毛地毯"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "毛发清理:94%",
+                  "anchors": [
+                    "毛发清理",
+                    "94%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "地毯增压使用:17次/月",
+                  "anchors": [
+                    "地毯增压使用",
+                    "17次/月"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "胶刷寿命:剩余8天",
+                  "anchors": [
+                    "胶刷寿命",
+                    "剩余8天"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网状态:正常",
+                  "anchors": [
+                    "滤网状态",
+                    "正常"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 2,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "毛发清理+2%",
+                  "anchors": [
+                    "毛发清理",
+                    "+2%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "地毯增压+2次/月",
+                  "anchors": [
+                    "地毯增压",
+                    "+2次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "胶刷临近更换",
+                  "anchors": [
+                    "胶刷临近更换"
+                  ],
+                  "matched": false
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 0.9,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始数据，且提供了基于数据的具体保养建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 6741.98,
+        "judge_latency_ms": 1162.4,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 6741.98,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 90㎡两居\n- 家庭结构: 1狗\n- 地面材质: 短毛地毯\n\n## 二、清洁效率\n- 毛发清理: 94%\n- 地毯增压使用: 17次/月\n\n## 三、耗材状态\n- 胶刷寿命: 剩余8天\n- 滤网状态: 正常\n\n## 四、环比变化\n- 毛发清理: 提高2%\n- 地毯增压使用: 增加2次/月\n- 胶刷寿命: 临近更换\n\n## 五、保养建议\n1. **及时更换胶刷**：胶刷剩余寿命为8天，建议尽快购买并更换新的胶刷。\n2. **定期检查滤网**：尽管当前滤网状态正常，仍需定期检查以确保其持续有效。\n3. **增加地毯增压频率**：本月地毯增压使用次数有所增加，若家中地毯污垢较多，可适当提高地毯增压的频率。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 7533.5,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：90㎡两居\n- 家庭结构：1狗\n- 地面材质：短毛地毯\n\n## 二、清洁效率\n- 毛发清理：94%\n- 地毯增压使用：17次/月\n\n## 三、耗材状态\n- 胶刷寿命：剩余8天\n- 滤网状态：正常\n\n## 四、环比变化\n- 毛发清理：+2%\n- 地毯增压使用：+2次/月\n- 胶刷寿命：临近更换\n\n## 五、保养建议\n1. **及时更换胶刷**：胶刷寿命仅剩8天，建议尽快更换新的胶刷，以保持最佳清洁效果。\n2. **定期检查滤网**：虽然滤网状态正常，但建议每月至少检查一次，确保没有堵塞或损坏。\n3. **增加地毯增压频率**：地毯增压使用次数有所增加，表明地毯上的污垢可能增多，建议适当增加地毯增压的使用频率，以提高清洁效果。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 7400.67,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：90㎡两居\n- 家庭结构：1狗\n- 地面材质：短毛地毯\n\n## 二、清洁效率\n- 毛发清理：94%\n- 地毯增压使用：17次/月\n\n## 三、耗材状态\n- 胶刷寿命：剩余8天\n- 滤网状态：正常\n\n## 四、环比变化\n- 毛发清理：+2%\n- 地毯增压使用：+2次/月\n- 胶刷寿命：临近更换\n\n## 五、保养建议\n1. **尽快更换胶刷**：当前胶刷寿命仅剩8天，为确保清洁效果和机器人的正常运行，请在本周内更换新的胶刷。\n2. **定期检查滤网**：虽然目前滤网状态正常，但建议每月至少检查一次，以防止灰尘堵塞影响吸力。\n3. **保持地毯清洁**：鉴于家中有宠物且地毯增压使用频率较高，建议定期手动清理地毯上的大颗粒杂物，减轻机器人负担并提高清洁效率。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      },
+      {
+        "id": "rep-004",
+        "type": "report",
+        "question": "帮我看看用户 1004 在 2026-10 的使用报告，主要问题和对比变化是什么？",
+        "user_id": "1004",
+        "month": "2026-10",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 85㎡两居\n- 家庭结构: 2猫\n- 地面材质: 混合地面\n\n## 二、清洁效率\n- 猫砂泼洒处理: 7次/月\n- 自动回充成功率: 91%\n\n## 三、耗材状态\n- 主刷缠绕: 中度\n- 集尘袋: 已更换（新）\n\n## 四、环比变化\n- 猫砂泼洒处理: 减少 1次/月\n- 自动回充成功率: 提高 1%\n- 集尘袋: 更换完成\n\n## 五、保养建议\n1. **定期清理主刷**: 由于主刷缠绕程度为中度，建议每次使用后检查并清理主刷上的毛发和杂物，以保持其最佳工作状态。\n2. **监控自动回充情况**: 尽管自动回充成功率较高，但仍有提升空间。请确保充电座周围无障碍物，并定期清洁充电触点。\n3. **持续关注集尘袋状态**: 新的集尘袋已经更换，请在下次满载前及时准备新的替换件，避免因集尘袋满而导致清扫效率下降。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1004",
+              "month": "2026-10"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "85㎡两居",
+                  "anchors": [
+                    "85㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "2猫",
+                  "anchors": [
+                    "2"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "混合地面",
+                  "anchors": [
+                    "混合地面"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "猫砂泼洒处理:7次/月",
+                  "anchors": [
+                    "猫砂泼洒处理",
+                    "7次/月"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "自动回充成功率:91%",
+                  "anchors": [
+                    "自动回充成功率",
+                    "91%"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "主刷缠绕:中度",
+                  "anchors": [
+                    "主刷缠绕",
+                    "中度"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "集尘袋已更换（新）",
+                  "anchors": [
+                    "集尘袋已更换（新）"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "猫砂泼洒-1次/月",
+                  "anchors": [
+                    "猫砂泼洒",
+                    "-1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "回充+1%",
+                  "anchors": [
+                    "回充",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "集尘袋更换完成",
+                  "anchors": [
+                    "集尘袋更换完成"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始记录，且提供了具体的保养建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 7845.71,
+        "judge_latency_ms": 1394.62,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 7845.71,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 85㎡两居\n- 家庭结构: 2猫\n- 地面材质: 混合地面\n\n## 二、清洁效率\n- 猫砂泼洒处理: 7次/月\n- 自动回充成功率: 91%\n\n## 三、耗材状态\n- 主刷缠绕: 中度\n- 集尘袋: 已更换（新）\n\n## 四、环比变化\n- 猫砂泼洒处理: 减少 1次/月\n- 自动回充成功率: 提高 1%\n- 集尘袋: 更换完成\n\n## 五、保养建议\n1. **定期清理主刷**: 由于主刷缠绕程度为中度，建议每次使用后检查并清理主刷上的毛发和杂物，以保持其最佳工作状态。\n2. **监控自动回充情况**: 尽管自动回充成功率较高，但仍有提升空间。请确保充电座周围无障碍物，并定期清洁充电触点。\n3. **持续关注集尘袋状态**: 新的集尘袋已经更换，请在下次满载前及时准备新的替换件，避免因集尘袋满而导致清扫效率下降。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 6758.31,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n85㎡两居 | 2猫 | 混合地面\n\n## 二、清洁效率\n- 猫砂泼洒处理:7次/月\n- 自动回充成功率:91%\n\n## 三、耗材状态\n- 主刷缠绕:中度\n- 集尘袋已更换（新）\n\n## 四、环比变化\n- 猫砂泼洒处理次数减少了1次/月\n- 自动回充成功率提高了1%\n- 集尘袋已经更换为新的\n\n## 五、保养建议\n1. **定期清理主刷**：主刷目前处于中度缠绕状态，建议每周检查并清理一次，以保证清洁效果。\n2. **关注集尘袋使用情况**：虽然集尘袋已更换为新的，但仍需注意其填充情况，及时更换以避免影响吸力。\n3. **继续优化自动回充路径**：自动回充成功率有所提高，但仍有提升空间，可以考虑调整充电座的位置或减少障碍物，进一步提高成功率。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 6491.33,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：85㎡两居\n- 家庭结构：2猫\n- 地面材质：混合地面\n\n## 二、清洁效率\n- 猫砂泼洒处理：7次/月\n- 自动回充成功率：91%\n\n## 三、耗材状态\n- 主刷缠绕：中度\n- 集尘袋已更换（新）\n\n## 四、环比变化\n- 猫砂泼洒处理次数减少1次/月\n- 自动回充成功率提高1%\n- 集尘袋更换完成\n\n## 五、保养建议\n1. **清理主刷缠绕**：由于主刷缠绕程度为中度，建议尽快清理以避免影响清扫效果和机器运行。\n2. **定期检查集尘袋**：虽然集尘袋已经更换，但仍需定期检查其状态，确保及时更换，防止满载影响清洁效率。\n3. **保持充电区域无障碍**：自动回充成功率为91%，可以进一步优化充电环境，确保机器人能够顺利返回充电座。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      },
+      {
+        "id": "rep-005",
+        "type": "report",
+        "question": "用户 1005 在 2026-08 的清洁效率和耗材情况怎么样？",
+        "user_id": "1005",
+        "month": "2026-08",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n120㎡三居 | 老人 | 防滑砖\n\n## 二、清洁效率\n- 手动操作占比: 93%\n- 定时清扫使用率: 2次/周\n\n## 三、耗材状态\n- 电池衰减: 28%\n- 水箱未激活\n\n## 四、环比变化\n- 手动操作占比减少1%\n- 定时清扫使用率增加1次/周\n- 电池衰减增加3%\n\n## 五、保养建议\n1. **定期检查电池状态**：电池已衰减28%，建议密切关注电池性能，必要时考虑更换新电池。\n2. **增加定时清扫频率**：目前每周定时清扫2次，可以适当增加定时清扫次数，以减轻手动操作负担。\n3. **激活并使用水箱功能**：当前水箱未激活，建议尝试启用拖地功能，以提高整体清洁效果。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1005",
+              "month": "2026-08"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "120㎡三居",
+                  "anchors": [
+                    "120㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "老人",
+                  "anchors": [
+                    "老人"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "防滑砖",
+                  "anchors": [
+                    "防滑砖"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "手动操作占比:93%",
+                  "anchors": [
+                    "手动操作占比",
+                    "93%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "定时清扫使用率:2次/周",
+                  "anchors": [
+                    "定时清扫使用率",
+                    "2次/周"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "电池衰减:28%",
+                  "anchors": [
+                    "电池衰减",
+                    "28%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "水箱未激活",
+                  "anchors": [
+                    "水箱未激活"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "手动占比-1%",
+                  "anchors": [
+                    "手动占比",
+                    "-1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "定时使用+1次/周",
+                  "anchors": [
+                    "定时使用",
+                    "+1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "电池衰减+3%",
+                  "anchors": [
+                    "电池衰减",
+                    "+3%"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始记录且提供了相关建议",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 5209.61,
+        "judge_latency_ms": 1038.57,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 5209.61,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n120㎡三居 | 老人 | 防滑砖\n\n## 二、清洁效率\n- 手动操作占比: 93%\n- 定时清扫使用率: 2次/周\n\n## 三、耗材状态\n- 电池衰减: 28%\n- 水箱未激活\n\n## 四、环比变化\n- 手动操作占比减少1%\n- 定时清扫使用率增加1次/周\n- 电池衰减增加3%\n\n## 五、保养建议\n1. **定期检查电池状态**：电池已衰减28%，建议密切关注电池性能，必要时考虑更换新电池。\n2. **增加定时清扫频率**：目前每周定时清扫2次，可以适当增加定时清扫次数，以减轻手动操作负担。\n3. **激活并使用水箱功能**：当前水箱未激活，建议尝试启用拖地功能，以提高整体清洁效果。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 7762.8,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：120㎡三居\n- 家庭结构：老人\n- 地面材质：防滑砖\n\n## 二、清洁效率\n- 手动操作占比：93%\n- 定时清扫使用率：2次/周\n\n## 三、耗材状态\n- 电池衰减：28%\n- 水箱未激活\n\n## 四、环比变化\n- 手动操作占比下降了1%\n- 定时清扫使用率增加了1次/周\n- 电池衰减增加了3%\n\n## 五、保养建议\n1. **定期检查电池状态**：电池已衰减28%，建议定期检查电池健康状况，必要时更换新电池以保证设备正常运行。\n2. **增加定时清扫频率**：本月定时清扫使用率有所提升，但仍可考虑进一步提高定时清扫的频率，减少手动操作，优化使用体验。\n3. **激活水箱功能**：记录显示水箱未激活，若家中有拖地需求，建议激活并使用水箱功能，以便更好地完成地面清洁任务。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 8716.89,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：120㎡三居\n- 家庭结构：老人\n- 地面材质：防滑砖\n\n## 二、清洁效率\n- 手动操作占比：93%\n- 定时清扫使用率：2次/周\n\n## 三、耗材状态\n- 电池衰减：28%\n- 水箱未激活\n\n## 四、环比变化\n- 手动操作占比减少 1%\n- 定时清扫使用率增加 1次/周\n- 电池衰减增加 3%\n\n## 五、保养建议\n1. **定期检查电池**：电池已衰减 28%，建议联系售后进行电池健康检查，必要时更换新电池以保证机器人的续航能力。\n2. **增加定时清扫频率**：本月定时清扫频率有所增加，但仍然较低。可以考虑进一步提高定时清扫的频率，以减轻手动操作的压力。\n3. **激活并使用水箱功能**：水箱未激活，建议尝试启用拖地功能，以提升地面清洁效果，特别是对于防滑砖地面，可以更好地去除污渍。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      },
+      {
+        "id": "rep-006",
+        "type": "report",
+        "question": "分析用户 1006 在 2026-07 的使用报告，和上月相比有哪些变化？",
+        "user_id": "1006",
+        "month": "2026-07",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n150㎡别墅 | 儿童 | 多层\n\n## 二、清洁效率\n- 跨楼层失败: 4次/周\n- 玩具避障率: 74%\n\n## 三、耗材状态\n- 边刷更换: 2次/季度\n- 集尘袋消耗: 1个月/个\n\n## 四、环比变化\n- 跨楼层失败增加了1次/周\n- 玩具避障率下降了2%\n- 记录未提供其他对比数据\n\n## 五、保养建议\n1. **提高玩具管理**：鉴于玩具散落增多导致避障率下降，建议在机器人工作前清理地面，减少障碍物。\n2. **检查跨楼层功能**：跨楼层失败次数增加，需检查楼梯识别传感器是否正常，或联系售后进行检修。\n3. **定期更换边刷**：保持每季度更换边刷两次的频率，以保证清洁效果。\n4. **及时更换集尘袋**：确保每月更换一次集尘袋，避免因集尘袋满导致吸力下降。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1006",
+              "month": "2026-07"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "150㎡别墅",
+                  "anchors": [
+                    "150㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "儿童",
+                  "anchors": [
+                    "儿童"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "多层",
+                  "anchors": [
+                    "多层"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "跨楼层失败:4次/周",
+                  "anchors": [
+                    "跨楼层失败",
+                    "4次/周"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "玩具避障率:74%",
+                  "anchors": [
+                    "玩具避障率",
+                    "74%"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "边刷更换:2次/季度",
+                  "anchors": [
+                    "边刷更换",
+                    "2次/季度"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "集尘袋消耗:1个月/个",
+                  "anchors": [
+                    "集尘袋消耗",
+                    "1个月/个"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "跨楼层失败+1次/周",
+                  "anchors": [
+                    "跨楼层失败",
+                    "+1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "玩具避障-2%",
+                  "anchors": [
+                    "玩具避障",
+                    "-2%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "玩具散落增多",
+                  "anchors": [
+                    "玩具散落增多"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实反映了原始数据，且提供了基于数据的具体建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 6477.73,
+        "judge_latency_ms": 1093.41,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 6477.73,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n150㎡别墅 | 儿童 | 多层\n\n## 二、清洁效率\n- 跨楼层失败: 4次/周\n- 玩具避障率: 74%\n\n## 三、耗材状态\n- 边刷更换: 2次/季度\n- 集尘袋消耗: 1个月/个\n\n## 四、环比变化\n- 跨楼层失败增加了1次/周\n- 玩具避障率下降了2%\n- 记录未提供其他对比数据\n\n## 五、保养建议\n1. **提高玩具管理**：鉴于玩具散落增多导致避障率下降，建议在机器人工作前清理地面，减少障碍物。\n2. **检查跨楼层功能**：跨楼层失败次数增加，需检查楼梯识别传感器是否正常，或联系售后进行检修。\n3. **定期更换边刷**：保持每季度更换边刷两次的频率，以保证清洁效果。\n4. **及时更换集尘袋**：确保每月更换一次集尘袋，避免因集尘袋满导致吸力下降。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 6491.31,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n150㎡别墅 | 儿童 | 多层\n\n## 二、清洁效率\n- 跨楼层失败:4次/周\n- 玩具避障率:74%\n\n## 三、耗材状态\n- 边刷更换:2次/季度\n- 集尘袋消耗:1个月/个\n\n## 四、环比变化\n- 跨楼层失败次数增加了1次/周。\n- 玩具避障率下降了2%。\n\n## 五、保养建议\n1. **增加玩具收纳频率**：鉴于玩具散落增多，导致跨楼层失败次数增加和玩具避障率下降，建议定期整理儿童活动区域，减少障碍物。\n2. **检查并维护边刷**：边刷每季度需更换两次，确保其正常工作，以提高清扫效率。\n3. **及时更换集尘袋**：集尘袋每月消耗一个，建议提前准备备用集尘袋，并在提示时及时更换，避免影响吸尘效果。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 1,
+            "gen_latency_ms": 9629.08,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 150㎡别墅\n- 家庭结构: 有儿童\n- 地面材质: 记录未提供\n\n## 二、清洁效率\n- 覆盖率: 记录未提供\n- 日均清扫面积: 记录未提供\n- 漏扫/避障: \n  - 跨楼层失败: 4次/周\n  - 玩具避障率: 74%\n\n## 三、耗材状态\n- 主刷: 记录未提供\n- 边刷: 更换2次/季度\n- 滤网: 记录未提供\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n- 集尘袋: 1个月/个\n\n## 四、环比变化\n- 跨楼层失败次数增加了1次/周\n- 玩具避障率下降了2%\n- 玩具散落增多\n\n## 五、保养建议\n1. **增加跨楼层功能的维护和检查**：鉴于跨楼层失败次数有所增加，建议定期检查机器人的跨楼层功能，确保其正常工作。\n2. **提高玩具避障能力**：由于玩具避障率下降，且玩具散落增多，建议在清扫前尽量清理地面上的玩具，以减少避障失败的情况。\n3. **定期更换边刷**：根据记录，边刷每季度需要更换2次，请按时更换以保持最佳清洁效果。\n4. **监控集尘袋消耗情况**：集尘袋每月需更换一次，建议设置提醒以确保及时更换。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      },
+      {
+        "id": "rep-007",
+        "type": "report",
+        "question": "帮我看看用户 1007 在 2026-10 的使用报告，主要问题和对比变化是什么？",
+        "user_id": "1007",
+        "month": "2026-10",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：55㎡一居\n- 家庭结构：独居\n- 地面材质：复合地板\n\n## 二、清洁效率\n- 覆盖率：92%\n- 日均清扫面积：37㎡\n- 沿边清扫无死角\n\n## 三、耗材状态\n- 拖布磨损：轻度\n- 滤网寿命：剩余20天\n\n## 四、环比变化\n- 覆盖率增加1%\n- 滤网寿命临近更换\n\n## 五、保养建议\n1. **及时更换滤网**：滤网寿命仅剩20天，为保证清洁效果，请在接下来的20天内更换滤网。\n2. **检查拖布状态**：虽然目前拖布磨损程度为轻度，但建议定期检查并根据实际磨损情况进行清洗或更换。\n3. **保持沿边清扫**：继续保持沿边清扫的良好表现，确保房间角落和边缘区域的清洁。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1007",
+              "month": "2026-10"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "55㎡一居",
+                  "anchors": [
+                    "55㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "独居",
+                  "anchors": [
+                    "独居"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "复合地板",
+                  "anchors": [
+                    "复合地板"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:92%",
+                  "anchors": [
+                    "覆盖率",
+                    "92%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "日均清扫:37㎡",
+                  "anchors": [
+                    "日均清扫",
+                    "37㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "沿边清扫无死角",
+                  "anchors": [
+                    "沿边清扫无死角"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "拖布磨损:轻度",
+                  "anchors": [
+                    "拖布磨损",
+                    "轻度"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网寿命:剩余20天",
+                  "anchors": [
+                    "滤网寿命",
+                    "剩余20天"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 1,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率+1%",
+                  "anchors": [
+                    "覆盖率",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网临近更换",
+                  "anchors": [
+                    "滤网临近更换"
+                  ],
+                  "matched": false
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 0.9,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始数据且提供了可执行建议",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 6590.19,
+        "judge_latency_ms": 1238.47,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 6590.19,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：55㎡一居\n- 家庭结构：独居\n- 地面材质：复合地板\n\n## 二、清洁效率\n- 覆盖率：92%\n- 日均清扫面积：37㎡\n- 沿边清扫无死角\n\n## 三、耗材状态\n- 拖布磨损：轻度\n- 滤网寿命：剩余20天\n\n## 四、环比变化\n- 覆盖率增加1%\n- 滤网寿命临近更换\n\n## 五、保养建议\n1. **及时更换滤网**：滤网寿命仅剩20天，为保证清洁效果，请在接下来的20天内更换滤网。\n2. **检查拖布状态**：虽然目前拖布磨损程度为轻度，但建议定期检查并根据实际磨损情况进行清洗或更换。\n3. **保持沿边清扫**：继续保持沿边清扫的良好表现，确保房间角落和边缘区域的清洁。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 9017.18,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 55㎡一居\n- 家庭结构: 独居\n- 地面材质: 复合地板\n\n## 二、清洁效率\n- 覆盖率: 92%\n- 日均清扫面积: 37㎡\n- 沿边清扫无死角\n\n## 三、耗材状态\n- 拖布磨损: 轻度\n- 滤网寿命: 剩余20天\n\n## 四、环比变化\n- 覆盖率: +1%\n- 滤网寿命: 临近更换\n\n## 五、保养建议\n1. **更换滤网**：滤网剩余寿命为20天，建议提前准备新的滤网并及时更换。\n2. **检查拖布**：拖布磨损程度为轻度，建议定期清洗并观察磨损情况，必要时更换。\n3. **保持沿边清扫效果**：继续保持良好的沿边清扫效果，确保无死角。\n\n通过以上建议，可以进一步提升机器人的清洁效率和使用寿命。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 8339.5,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 55㎡一居\n- 家庭结构: 独居\n- 地面材质: 复合地板\n\n## 二、清洁效率\n- 覆盖率: 92%\n- 日均清扫面积: 37㎡\n- 沿边清扫无死角\n\n## 三、耗材状态\n- 拖布磨损: 轻度\n- 滤网寿命: 剩余20天\n\n## 四、环比变化\n- 覆盖率增加1%\n- 滤网寿命临近更换\n\n## 五、保养建议\n1. **及时更换滤网**：滤网剩余寿命为20天，建议在接下来的两周内购买并更换新的滤网，以保持机器人的最佳清洁效果。\n2. **检查拖布磨损情况**：虽然目前拖布磨损程度为轻度，但应定期检查其状况，一旦发现有明显损坏或清洁效果下降，应及时更换。\n3. **持续优化清扫路径**：本月覆盖率已达到92%，较上月提升了1%，继续保持并进一步优化清扫路径，争取达到更高的覆盖率。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      },
+      {
+        "id": "rep-008",
+        "type": "report",
+        "question": "用户 1008 在 2026-11 的清洁效率和耗材情况怎么样？",
+        "user_id": "1008",
+        "month": "2026-11",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n100㎡三居 | 三口之家 | 大理石\n\n## 二、清洁效率\n- **覆盖率**：89%\n- **餐桌区域漏扫**：0次/天\n- **拖地水痕**：无\n\n## 三、耗材状态\n- **主刷寿命**：剩余45天\n- **基站清洁盘**：每两周清理\n\n## 四、环比变化\n- **覆盖率**：+1%\n- **低水量档+定期清理清洁盘稳定运行**\n\n## 五、保养建议\n1. **继续保持定期清理基站清洁盘**：每两周清理一次，以确保机器人的高效运行。\n2. **关注主刷寿命**：主刷剩余寿命为45天，请在到期前及时更换，以避免影响清洁效果。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1008",
+              "month": "2026-11"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "100㎡三居",
+                  "anchors": [
+                    "100㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "三口之家",
+                  "anchors": [
+                    "三口之家"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "大理石",
+                  "anchors": [
+                    "大理石"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:89%",
+                  "anchors": [
+                    "覆盖率",
+                    "89%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "餐桌区域漏扫:0次/天",
+                  "anchors": [
+                    "餐桌区域漏扫",
+                    "0次/天"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "拖地水痕:无",
+                  "anchors": [
+                    "拖地水痕",
+                    "无"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "主刷寿命:剩余45天",
+                  "anchors": [
+                    "主刷寿命",
+                    "剩余45天"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "基站清洁盘:每两周清理",
+                  "anchors": [
+                    "基站清洁盘",
+                    "每两周清理"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率+1%",
+                  "anchors": [
+                    "覆盖率",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "低水量档+定期清理清洁盘稳定运行",
+                  "anchors": [
+                    "低水量档+定期清理清洁盘稳定运行"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始记录，且提供了基于数据的可执行建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 6149.42,
+        "judge_latency_ms": 1107.6,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 6149.42,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n100㎡三居 | 三口之家 | 大理石\n\n## 二、清洁效率\n- **覆盖率**：89%\n- **餐桌区域漏扫**：0次/天\n- **拖地水痕**：无\n\n## 三、耗材状态\n- **主刷寿命**：剩余45天\n- **基站清洁盘**：每两周清理\n\n## 四、环比变化\n- **覆盖率**：+1%\n- **低水量档+定期清理清洁盘稳定运行**\n\n## 五、保养建议\n1. **继续保持定期清理基站清洁盘**：每两周清理一次，以确保机器人的高效运行。\n2. **关注主刷寿命**：主刷剩余寿命为45天，请在到期前及时更换，以避免影响清洁效果。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 5771.59,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 100㎡三居\n- 家庭结构: 三口之家\n- 地面材质: 大理石\n\n## 二、清洁效率\n- 覆盖率: 89%\n- 餐桌区域漏扫: 0次/天\n- 拖地水痕: 无\n\n## 三、耗材状态\n- 主刷寿命: 剩余45天\n- 基站清洁盘: 每两周清理\n\n## 四、环比变化\n- 覆盖率: +1%\n- 低水量档+定期清理清洁盘: 稳定运行\n\n## 五、保养建议\n1. 继续保持每两周清理基站清洁盘，以维持机器人的稳定运行。\n2. 注意主刷的剩余寿命为45天，提前准备更换新的主刷，确保清扫效果。\n3. 由于大理石地面较易留下水痕，建议继续使用低水量档进行拖地，避免水渍残留。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 4637.86,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n100㎡三居 | 三口之家 | 大理石\n\n## 二、清洁效率\n- 覆盖率: 89%\n- 餐桌区域漏扫: 0次/天\n- 拖地水痕: 无\n\n## 三、耗材状态\n- 主刷寿命: 剩余45天\n- 基站清洁盘: 每两周清理\n\n## 四、环比变化\n- 覆盖率 +1%\n- 低水量档+定期清理清洁盘稳定运行\n\n## 五、保养建议\n1. 继续保持每两周清理基站清洁盘，以维持机器人的高效运行。\n2. 在主刷剩余45天时及时更换，避免影响清扫效果。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      },
+      {
+        "id": "rep-009",
+        "type": "report",
+        "question": "分析用户 1009 在 2026-07 的使用报告，和上月相比有哪些变化？",
+        "user_id": "1009",
+        "month": "2026-07",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 80㎡两居\n- 家庭结构: 养宠\n- 地面材质: 仿实木\n\n## 二、清洁效率\n- 覆盖率: 记录未提供\n- 日均清扫面积: 记录未提供\n- 毛发清理: 86%\n- 自动回充成功率: 93%\n\n## 三、耗材状态\n- 主刷: 记录未提供\n- 边刷: 磨损轻度\n- 滤网: 已更换（新）\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n- 集尘袋: 记录未提供\n\n## 四、环比变化\n- 毛发清理: +1%\n- 自动回充成功率: +1%\n- 滤网: 更换完成\n\n## 五、保养建议\n1. **定期检查边刷磨损情况**：目前边刷磨损为轻度，建议每月检查一次，确保其正常工作。\n2. **保持滤网清洁**：虽然滤网已更换为新的，但建议每次使用后清理滤网，以延长使用寿命。\n3. **定期清理尘盒**：尽管记录未提供尘盒状态，但建议每次使用后清空尘盒，避免堵塞影响吸力。\n4. **检查自动回充路径**：自动回充成功率有所提升，但仍需保持充电座周围无杂物，确保无障碍回充。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1009",
+              "month": "2026-07"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "80㎡两居",
+                  "anchors": [
+                    "80㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "养宠",
+                  "anchors": [
+                    "养宠"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "仿实木",
+                  "anchors": [
+                    "仿实木"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 1,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "宠物毛发清理:86%",
+                  "anchors": [
+                    "宠物毛发清理",
+                    "86%"
+                  ],
+                  "matched": false
+                },
+                {
+                  "fact": "自动回充成功率:93%",
+                  "anchors": [
+                    "自动回充成功率",
+                    "93%"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "滤网已更换（新）",
+                  "anchors": [
+                    "滤网已更换（新）"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "边刷磨损:轻度",
+                  "anchors": [
+                    "边刷磨损",
+                    "轻度"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "毛发清理+1%",
+                  "anchors": [
+                    "毛发清理",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "回充+1%",
+                  "anchors": [
+                    "回充",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网更换完成",
+                  "anchors": [
+                    "滤网更换完成"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 0.9,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始记录，且提供了基于数据的具体可执行建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 7810.44,
+        "judge_latency_ms": 1469.91,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 7810.44,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 80㎡两居\n- 家庭结构: 养宠\n- 地面材质: 仿实木\n\n## 二、清洁效率\n- 覆盖率: 记录未提供\n- 日均清扫面积: 记录未提供\n- 毛发清理: 86%\n- 自动回充成功率: 93%\n\n## 三、耗材状态\n- 主刷: 记录未提供\n- 边刷: 磨损轻度\n- 滤网: 已更换（新）\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n- 集尘袋: 记录未提供\n\n## 四、环比变化\n- 毛发清理: +1%\n- 自动回充成功率: +1%\n- 滤网: 更换完成\n\n## 五、保养建议\n1. **定期检查边刷磨损情况**：目前边刷磨损为轻度，建议每月检查一次，确保其正常工作。\n2. **保持滤网清洁**：虽然滤网已更换为新的，但建议每次使用后清理滤网，以延长使用寿命。\n3. **定期清理尘盒**：尽管记录未提供尘盒状态，但建议每次使用后清空尘盒，避免堵塞影响吸力。\n4. **检查自动回充路径**：自动回充成功率有所提升，但仍需保持充电座周围无杂物，确保无障碍回充。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 7961.09,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：80㎡两居\n- 家庭结构：养宠\n- 地面材质：仿实木\n\n## 二、清洁效率\n- 宠物毛发清理：86%\n- 自动回充成功率：93%\n\n## 三、耗材状态\n- 滤网：已更换（新）\n- 边刷磨损：轻度\n- 主刷、尘盒、拖布、集尘袋：记录未提供\n\n## 四、环比变化\n- 宠物毛发清理：+1%\n- 自动回充成功率：+1%\n- 滤网：已完成更换\n\n## 五、保养建议\n1. **定期检查边刷**：边刷目前为轻度磨损，建议每两周检查一次，确保其正常工作。\n2. **保持滤网清洁**：虽然滤网刚刚更换，但仍需定期检查并清理，以保证吸力和过滤效果。\n3. **关注自动回充功能**：尽管自动回充成功率较高，仍需留意是否有障碍物阻挡充电座或机器人返回路径，确保持续高效运行。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 8065.38,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：80㎡两居\n- 家庭结构：养宠\n- 地面材质：仿实木\n\n## 二、清洁效率\n- 宠物毛发清理：86%\n- 自动回充成功率：93%\n\n## 三、耗材状态\n- 滤网：已更换（新）\n- 边刷磨损：轻度\n- 主刷、尘盒、拖布、集尘袋：记录未提供\n\n## 四、环比变化\n- 宠物毛发清理：+1%\n- 自动回充成功率：+1%\n- 滤网：更换完成\n\n## 五、保养建议\n1. **定期检查并清洁滤网**：虽然滤网刚刚更换，但为了保证最佳的过滤效果，建议每两周进行一次滤网清洁。\n2. **关注边刷磨损情况**：边刷目前为轻度磨损，建议每月检查一次边刷的状态，如发现明显磨损或缠绕，及时清理或更换。\n3. **继续监控自动回充成功率**：本月自动回充成功率为93%，较上月有所提升，但仍需注意充电座周围环境，确保无障碍物影响回充。\n4. **保持地面整洁**：由于家中养宠，建议每日启动机器人清扫，以减少宠物毛发积累，提高整体清洁效率。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      },
+      {
+        "id": "rep-010",
+        "type": "report",
+        "question": "帮我看看用户 1010 在 2026-09 的使用报告，主要问题和对比变化是什么？",
+        "user_id": "1010",
+        "month": "2026-09",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 130㎡四居\n- 家庭结构: 三代同堂\n- 地面材质: 通体砖\n\n## 二、清洁效率\n- 覆盖率: 84%\n- 日均清扫面积: 记录未提供\n- 手动辅助清扫: 1次/天\n- 分区定时生效\n\n## 三、耗材状态\n- 滤网: 已更换（新）\n- 集尘袋: 消耗速度为1.3个月/个\n- 主刷: 记录未提供\n- 边刷: 记录未提供\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n\n## 四、环比变化\n- 覆盖率: +1%\n- 手动辅助清扫: -1次/天\n- 分区定时: 生效\n\n## 五、保养建议\n1. **定期检查主刷和边刷**：虽然记录中没有提及它们的状态，但作为易损件，定期清理缠绕的毛发或杂物可以保证机器人的正常工作。\n2. **关注集尘袋更换频率**：当前集尘袋消耗速度为1.3个月/个，请注意不要超过这个周期进行更换，以避免堵塞影响吸力。\n3. **利用分区定时功能优化清扫计划**：根据本月数据，分区定时已经生效，您可以进一步调整各个区域的清扫时间，减少手动干预次数。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1010",
+              "month": "2026-09"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "130㎡四居",
+                  "anchors": [
+                    "130㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "三代同堂",
+                  "anchors": [
+                    "三代同堂"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "通体砖",
+                  "anchors": [
+                    "通体砖"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:84%",
+                  "anchors": [
+                    "覆盖率",
+                    "84%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "手动辅助清扫:1次/天",
+                  "anchors": [
+                    "手动辅助清扫",
+                    "1次/天"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "滤网已更换（新）",
+                  "anchors": [
+                    "滤网已更换（新）"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "集尘袋消耗:1.3个月/个",
+                  "anchors": [
+                    "集尘袋消耗",
+                    "1.3个月/个"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率+1%",
+                  "anchors": [
+                    "覆盖率",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "手动辅助-1次/天",
+                  "anchors": [
+                    "手动辅助",
+                    "-1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "分区定时生效",
+                  "anchors": [
+                    "分区定时生效"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 1,
+          "advice": 1,
+          "reason": "报告准确反映了原始数据，仅在未提供信息处做了合理推测，并给出了具体建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 8763.38,
+        "judge_latency_ms": 1580.81,
+        "error": "",
+        "runs": [
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 1,
+            "gen_latency_ms": 8763.38,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 130㎡四居\n- 家庭结构: 三代同堂\n- 地面材质: 通体砖\n\n## 二、清洁效率\n- 覆盖率: 84%\n- 日均清扫面积: 记录未提供\n- 手动辅助清扫: 1次/天\n- 分区定时生效\n\n## 三、耗材状态\n- 滤网: 已更换（新）\n- 集尘袋: 消耗速度为1.3个月/个\n- 主刷: 记录未提供\n- 边刷: 记录未提供\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n\n## 四、环比变化\n- 覆盖率: +1%\n- 手动辅助清扫: -1次/天\n- 分区定时: 生效\n\n## 五、保养建议\n1. **定期检查主刷和边刷**：虽然记录中没有提及它们的状态，但作为易损件，定期清理缠绕的毛发或杂物可以保证机器人的正常工作。\n2. **关注集尘袋更换频率**：当前集尘袋消耗速度为1.3个月/个，请注意不要超过这个周期进行更换，以避免堵塞影响吸力。\n3. **利用分区定时功能优化清扫计划**：根据本月数据，分区定时已经生效，您可以进一步调整各个区域的清扫时间，减少手动干预次数。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 6358.2,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：130㎡四居\n- 家庭结构：三代同堂\n- 地面材质：通体砖\n\n## 二、清洁效率\n- 覆盖率：84%\n- 手动辅助清扫：1次/天\n\n## 三、耗材状态\n- 滤网：已更换（新）\n- 集尘袋消耗：1.3个月/个\n- 主刷、边刷、尘盒、拖布：记录未提供\n\n## 四、环比变化\n- 覆盖率增加1%\n- 手动辅助清扫减少1次/天\n- 分区定时生效\n\n## 五、保养建议\n1. 继续保持滤网的定期更换，确保空气流通和过滤效果。\n2. 注意集尘袋的使用周期，根据当前1.3个月/个的消耗速度，合理安排更换时间。\n3. 由于手动辅助清扫次数减少，可以进一步优化分区定时设置，提高自动清扫的覆盖率。"
+          },
+          {
+            "passed": true,
+            "correctness": null,
+            "faithfulness": 2,
+            "gen_latency_ms": 7930.83,
+            "error": "",
+            "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- **面积/户型**: 130㎡四居\n- **家庭结构**: 三代同堂\n- **地面材质**: 通体砖\n\n## 二、清洁效率\n- **覆盖率**: 84%\n- **日均清扫面积**: 记录未提供\n- **手动辅助清扫**: 1次/天\n- **漏扫/避障**: 记录未提供\n\n## 三、耗材状态\n- **滤网**: 已更换（新）\n- **集尘袋消耗**: 1.3个月/个\n- **主刷、边刷、尘盒、拖布**: 记录未提供\n\n## 四、环比变化\n- **覆盖率**: +1%\n- **手动辅助清扫**: -1次/天\n- **分区定时生效**: 分区定时功能已生效\n\n## 五、保养建议\n1. **定期检查并清理主刷和边刷**：确保主刷和边刷没有缠绕物，以保持最佳清洁效果。\n2. **及时更换集尘袋**：根据记录，集尘袋大约每1.3个月需要更换一次，请在接近更换周期时提前准备新的集尘袋。\n3. **继续关注分区定时功能**：分区定时功能已经生效，建议持续观察其运行情况，确保每个区域都能按时得到清洁。"
+          }
+        ],
+        "pass_count": 3,
+        "passed_all": true,
+        "passed_any": true
+      }
+    ]
+  }
+}
