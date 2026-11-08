@@ -1,4 +1,3 @@
-import time
 import uuid
 
 import streamlit as st
@@ -54,28 +53,24 @@ prompt = st.chat_input()
 if prompt:
     st.chat_message("user").write(prompt)
     st.session_state["message"].append({"role": "user", "content": prompt})
-    response_messages = []
-
-    def capture(generator, cache_list):
-        for chunk in generator:
-            cache_list.append(chunk)
-            for char in chunk:
-                time.sleep(0.01)
-                yield char
 
     try:
-        with st.spinner('智能客服思考中。。。'):
-            res_stream = st.session_state["agent"].execute_stream(
-                prompt,
-                thread_id=st.session_state["thread_id"],
-            )
-            st.chat_message("assistant").write(capture(res_stream, response_messages))
+        res_stream = st.session_state["agent"].execute_stream(
+            prompt,
+            thread_id=st.session_state["thread_id"],
+        )
+        with st.chat_message("assistant"):
+            # iter_chat 已经按 token 增量产出，直接交给 write_stream，不再逐字 sleep 伪装。
+            answer = st.write_stream(res_stream)
 
-        if not response_messages:
+        if isinstance(answer, list):
+            answer = "".join(answer)
+        answer = (answer or "").strip()
+        if not answer:
             raise RuntimeError("模型没有返回任何内容")
 
         st.session_state["message"].append(
-            {"role": "assistant", "content": response_messages[-1].strip()}
+            {"role": "assistant", "content": answer}
         )
     except Exception:
         logger.error("对话执行失败", exc_info=True)

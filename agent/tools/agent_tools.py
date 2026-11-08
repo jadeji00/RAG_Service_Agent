@@ -10,7 +10,16 @@ from utils.config_handler import agent_conf
 from utils.logger_handler import logger
 from utils.path_tool import get_abs_path
 
-rag = RagSummarizeService()
+# 惰性单例：模块导入时不构造向量库，避免启动失败绕过 FastAPI/页面的兜底。
+_rag: RagSummarizeService | None = None
+
+
+def get_rag() -> RagSummarizeService:
+    global _rag
+    if _rag is None:
+        _rag = RagSummarizeService()
+    return _rag
+
 
 user_ids = ['1001', '1002', '1003', '1004', '1005', '1006', '1007', '1008', '1009', '1010']
 month_arr = ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11']
@@ -25,12 +34,12 @@ def _clean_cell(value: str | None) -> str:
 
 def ensure_rag_ready() -> int:
     """启动自检：空库自动灌库，有数据时同步新增/变更文件。"""
-    return rag.ensure_knowledge_base()
+    return get_rag().ensure_knowledge_base()
 
 
 @tool(description='从向量存储中检索参考资料')
 def rag_summarize(query: str) -> str:
-    return rag.rag_summarize(query)
+    return get_rag().rag_summarize(query)
 
 
 @tool(description='获取城市天气，以信息字符串形式返回')
