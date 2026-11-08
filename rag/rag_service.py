@@ -1,3 +1,4 @@
+from agent.scope_router import OUT_OF_SCOPE_ANSWER, is_out_of_scope_query
 from rag.vector_store import VectorStoreService
 from utils.prompt_loader import load_rag_prompts
 from langchain_core.prompts import PromptTemplate
@@ -47,6 +48,9 @@ class RagSummarizeService(object):
 
     def answer(self, query: str, context_docs: list[Document]) -> str:
         """只负责生成；检索结果由调用方传入，便于单独评测召回阶段。"""
+        # 越界请求在进入模型前直接拒答，避免模型顺手完成编程/翻译等任务。
+        if is_out_of_scope_query(query):
+            return OUT_OF_SCOPE_ANSWER
         return self.chain.invoke(
             {
                 "input": query,
