@@ -1,0 +1,12 @@
+# 观测数据落盘位置（trace / token 账本），相对项目根目录
+db_path: checkpoints/observability.sqlite3
+
+# 成本估算单价，单位：元 / 1K tokens。
+# 仅用于演示和相对比较，实际金额以百炼控制台账单为准；
+# 换模型或调价后请同步修改这里，不要改代码。
+pricing:
+  qwen-max:
+    input_per_1k: 0.0024
+    output_per_1k: 0.0096
+
+currency: CNY
