@@ -25,17 +25,17 @@
 
 - **现象**：页面会冒出工具调用的原始 JSON、用户消息重复显示；所谓「流式」其实是整段返回后按字符 `sleep` 播放。
 - **根因**：`values` 每次返回完整状态，最后一条消息不一定是 `AIMessage`；`app.py` 又用逐字符打印伪装流式。
-- **修复（计划）**：改为 `stream_mode="messages"` 并只收 `AIMessageChunk`，或使用 `astream_events` 过滤事件；前端按 token 增量渲染。
-- **防复发**：为流式输出写事件序列测试，断言不包含 `ToolMessage` 与重复内容。
-- **状态**：**未修复**（当前优先做评测与检索，此项排在 API/SSE 阶段）。
+- **修复**：改为 `stream_mode=["messages","updates"]` 并只收 `metadata["langgraph_node"] == "model"` 的增量文本，工具事件从 `updates` 取；前端直接渲染增量，不再逐字打印。
+- **防复发**：`tests/test_chat_runner.py` 与 `tests/test_api.py` 断言事件序列、delta 数量与最终 answer；`app.py` 改用 `st.write_stream`。
+- **状态**：**已修复**。改为 `stream_mode=["messages","updates"]`，只收 `metadata["langgraph_node"] == "model"` 的增量文本；`updates` 单独用于工具开始/结束事件。`app.py` 改用 `st.write_stream`，不再逐字 `sleep`。实测 QA 回答按 token 到达（首 token 约 3.7 秒，来自 RAG 工具耗时），报告首 token 约 0.4–0.8 秒。
 
 ## P4. 导入即初始化，启动失败绕过页面兜底
 
 - **现象**：`app.py` 明明有 `try/except`，但配置错误、模型 key 缺失时页面仍直接报错退出。
 - **根因**：`agent/tools/agent_tools.py` 在模块顶层执行 `rag = RagSummarizeService()`；`model/factory.py` 也在模块顶层构造模型。这些发生在 `import` 阶段，早于 `app.py` 的 `try`。
-- **修复（计划）**：改为惰性单例或应用启动钩子（FastAPI `lifespan`）；启动自检失败返回可读错误，而不是 traceback。
-- **防复发**：启动自检四项（配置、模型、向量库、checkpointer）；测试里模拟缺 key。
-- **状态**：**未修复**，已列入 API 阶段。
+- **修复**：RAG 改为惰性单例 `get_rag()`；FastAPI 在 `lifespan` 里才导入并构造 `ReactAgent`，导入 `server.app` 不会拉起向量库和模型；启动失败时保留 `startup_error`，`/health` 返回 503 与可读原因，`/chat/stream` 返回 `not_ready` SSE 事件。
+- **防复发**：`tests/test_api.py` 覆盖「runner 未就绪时 health=503、stream 返回 error」；启动自检仍会打印向量数。
+- **状态**：**已修复**（FastAPI 入口）。Streamlit 入口仍会在页面脚本导入 `ReactAgent` 时构造，失败由页面 `try/except` 显示错误，不再直接抛 traceback。
 
 ## P5. 外部 md5 台账与向量库不同步
 
@@ -93,3 +93,35 @@
 - **防复发**：剖析报告链路时同时看模型轮次、每轮输入/输出字数和耗时；正常报告应为「1 轮取数 + 1 轮生成」。
 - **状态**：已修复并实测（同一请求 24.1 秒 → 9.5 秒，2 轮）。
 - **2026-11-07 更新**：报告请求已改为确定性子流程，只调用一次写作模型，工具轮次由代码固定为「取数 1 次 + 写作 1 次」，不再存在模型顺手多查一次的可能。延迟剩余部分来自最终 400–600 字输出本身。
+
+## P9. 流式回答不增量，token 用量也取不到
+
+- **现象**：接入 SSE 后发现两件事：一是回答不是逐 token 到达，而是最后一次性返回；二是 `UsageMetadataCallbackHandler` 拿到的是空字典，账本没有 token。
+- **根因**：DashScope `ChatTongyi` 在**带工具**的流式调用中默认不增量输出，需要显式 `model_kwargs={"incremental_output": True}`；用量也不在 LangChain 统一的 `usage_metadata`，而在最后一帧的 `response_metadata["token_usage"]`。
+- **修复**：主模型与报告模型都设 `streaming=True` + `incremental_output=True`；`observability/usage.py` 同时兼容两种字段来源，并用供应商 `request_id` 去重，避免同一帧跨多次回调重复累加。
+- **防复发**：`tests/test_observability.py` 覆盖字段归一、提取与去重；SSE 实跑断言 delta 数量 > 1；账本只在 `usage_source=provider` 时算成本。
+- **状态**：已修复并实测。QA 单次 3,415–3,482 tokens（2 次模型调用），报告 829–837 tokens；报告首 token 约 0.4–0.8 秒。
+
+## P10. 护栏提示不能直接插 `SystemMessage`
+
+- **现象**：连续拦截工具后想给模型注入一条系统提示，调用报错或提示词不生效。
+- **根因**：DashScope `ChatTongyi` 要求 system 消息必须位于消息列表首位，中途追加 `SystemMessage` 不合法。
+- **修复**：改用带 `additional_kwargs={"guardrail": True}` 的 `HumanMessage` 注入；`load_history` 跳过这类消息，不会出现在界面历史里。
+- **防复发**：`tests/test_middleware.py` 断言注入消息带标记、只注入一次；历史读取有过滤分支。
+- **状态**：已修复。
+
+## P11. 提示词要求「输出思考过程」，把工具调用前的旁白推给了用户
+
+- **现象**：SSE 里先出现「我需要调用 rag_summarize 获取资料」「我将为您查询……」等文字，然后才是工具事件和正式回答。
+- **根因**：主提示词写着「每次调用工具前必须输出真实的自然语言思考过程」；模型照做，这段文字进入 `AIMessage.content`，被当成 delta 推给前端。
+- **修复**：提示词改为「调用工具时直接发起，不要输出思考过程、工具名、参数或『我将调用……』」；最终回答只给结论和建议。
+- **防复发**：实跑检查第一段模型输出的 `content` 应为空、只有 `tool_calls`；SSE 首屏不应出现工具名旁白。
+- **状态**：已修复并实测（首个模型步骤 content 为空，回答只保留最终文本）。
+
+## P12. `execute_stream` 语义变了，Streamlit 还在按「整段回答」处理
+
+- **现象**：`execute_stream` 改为按 token 产出后，Streamlit 仍把最后一个 chunk 当作完整回答写入历史，且继续逐字 `sleep` 播放。
+- **根因**：接口语义从「一次性整段」变成「增量片段」，旧调用方没有同步改；这是接口演进时的兼容性遗漏。
+- **修复**：`app.py` 改用 `st.write_stream(res_stream)`，把返回的片段拼接后写入历史，删除逐字 `sleep`。
+- **防复发**：`execute_stream` 的 docstring 明确写「只吐文本增量」；新代码统一用 `iter_chat` 的 `result.answer` 作为最终答案，不再取最后一个 delta。
+- **状态**：已修复；Streamlit 页面未纳入自动化测试，只做了代码路径检查。

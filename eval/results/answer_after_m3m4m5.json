@@ -1,0 +1,3143 @@
+{
+  "meta": {
+    "generated_at": "2026-11-08 17:21:51",
+    "run_id": "20261108171700",
+    "dataset": "eval\\dataset.jsonl",
+    "types": [
+      "answerable",
+      "negative",
+      "report"
+    ],
+    "counts": {
+      "answerable": 55,
+      "report": 10,
+      "negative": 15
+    },
+    "collection": "agent",
+    "chunk_count": 66,
+    "embedding_model": "text-embedding-v4",
+    "chat_model": "qwen-max",
+    "judge_model": "qwen-max",
+    "judge_calls": 80,
+    "judge_errors": 0,
+    "k": 3,
+    "repeat": 1
+  },
+  "summary": {
+    "answerable": {
+      "evaluated": 55,
+      "scored": 55,
+      "correct_rate": 0.8181818181818182,
+      "acceptable_rate": 1.0,
+      "mean_correctness": 1.8181818181818181,
+      "correctness_distribution": {
+        "2": 45,
+        "1": 10,
+        "0": 0
+      },
+      "grounded_rate": 1.0,
+      "faithful_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "faithfulness_distribution": {
+        "2": 55,
+        "1": 0,
+        "0": 0
+      },
+      "mean_term_hit_rate": 0.8333333333333334,
+      "pass_rate": 1.0,
+      "gen_latency_ms": {
+        "p50": 1637.28,
+        "p95": 2676.0,
+        "mean": 1730.9
+      },
+      "judge_latency_ms": {
+        "p50": 1434.91,
+        "p95": 1926.0,
+        "mean": 1494.07
+      },
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "negative": {
+      "evaluated": 15,
+      "scored": 15,
+      "refusal_accuracy": 1.0,
+      "cue_rate": 1.0,
+      "pass_rate": 1.0,
+      "gen_latency_ms": {
+        "p50": 135.45,
+        "p95": 164.62,
+        "mean": 141.26
+      },
+      "judge_latency_ms": {
+        "p50": 1012.18,
+        "p95": 1289.98,
+        "mean": 1085.92
+      },
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "report": {
+      "evaluated": 10,
+      "scored": 10,
+      "complete_rate": 1.0,
+      "field_coverage": {
+        "特征": {
+          "covered": 10,
+          "total": 10,
+          "rate": 1.0
+        },
+        "清洁效率": {
+          "covered": 10,
+          "total": 10,
+          "rate": 1.0
+        },
+        "耗材": {
+          "covered": 10,
+          "total": 10,
+          "rate": 1.0
+        },
+        "对比": {
+          "covered": 10,
+          "total": 10,
+          "rate": 1.0
+        }
+      },
+      "mean_field_coverage": 1.0,
+      "mean_fact_coverage": 0.97,
+      "faithful_rate": 1.0,
+      "grounded_rate": 0.9,
+      "advice_rate": 1.0,
+      "pipeline_ok_rate": 1.0,
+      "fetch_args_ok_rate": 1.0,
+      "pass_rate": 1.0,
+      "gen_latency_ms": {
+        "p50": 7378.52,
+        "p95": 11876.54,
+        "mean": 7927.33
+      },
+      "judge_latency_ms": {
+        "p50": 1365.45,
+        "p95": 1710.45,
+        "mean": 1382.64
+      },
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "overall": {
+      "evaluated": 80,
+      "passed": 80,
+      "pass_rate": 1.0,
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "pass_k": null
+  },
+  "details": {
+    "answerable": [
+      {
+        "id": "qa-001",
+        "type": "answerable",
+        "question": "60㎡以下的小户型选扫地机器人，重点看什么？",
+        "answer": "对于60㎡以下的小户型选择扫地机器人时，重点考虑性价比高的扫拖一体基础款，优先关注导航准确性和吸力表现。",
+        "sources": [
+          "选购指南.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "提到性价比和导航、吸力，但遗漏了地面材质等其他关键因素。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1681.71,
+        "judge_latency_ms": 1461.84,
+        "error": ""
+      },
+      {
+        "id": "qa-002",
+        "type": "answerable",
+        "question": "90㎡以上的户型选扫地机器人，要重点关注什么？",
+        "answer": "对于90㎡以上的户型选择扫地机器人时，应重点关注续航能力、断点续扫功能以及自动集尘功能。这些特性有助于减少清扫过程中的中断次数和人工干预，提高清洁效率。",
+        "sources": [
+          "选购指南.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "提到了续航能力和断点续扫，但提前引入了自动集尘功能作为重点。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1810.29,
+        "judge_latency_ms": 1861.35,
+        "error": ""
+      },
+      {
+        "id": "qa-003",
+        "type": "answerable",
+        "question": "养宠家庭选扫地机器人，重点看哪些配置？",
+        "answer": "养宠家庭选择扫地机器人时，应重点关注纯胶主刷加视觉避障功能、大尘盒以及地毯增压配置。",
+        "sources": [
+          "选购指南.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "回答提到的配置部分正确，但遗漏了关于有小孩和老人家庭的具体建议。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1206.61,
+        "judge_latency_ms": 1465.94,
+        "error": ""
+      },
+      {
+        "id": "qa-004",
+        "type": "answerable",
+        "question": "激光导航和视觉导航怎么选？",
+        "answer": "激光导航建图准确且受光线影响小，是主流首选；视觉导航成本较低且机身更薄，但在暗光和复杂环境下的稳定性较差。选择时可以根据实际需求和使用环境来决定。",
+        "sources": [
+          "选购指南.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均可在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1970.11,
+        "judge_latency_ms": 1340.22,
+        "error": ""
+      },
+      {
+        "id": "qa-005",
+        "type": "answerable",
+        "question": "怎么判断扫地机器人能不能进沙发底？",
+        "answer": "要判断扫地机器人是否能进沙发底，需先测量机器人的机身高度和沙发底部缝隙的高度。如果机器人无法进入，则可以设置该区域为禁区或手动清理。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确反映了如何判断扫地机器人能否进入沙发底，并且所有信息均来源于提供的参考资料。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1455.69,
+        "judge_latency_ms": 1457.5,
+        "error": ""
+      },
+      {
+        "id": "qa-006",
+        "type": "answerable",
+        "question": "扫地机器人越障能力一般多少，门槛太高怎么办？",
+        "answer": "扫地机器人的常见越障能力为1.5-2厘米。对于超过2厘米的门槛，建议加装爬坡垫或者在应用中设置该区域为禁区。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确且完全基于提供的检索上下文。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1556.17,
+        "judge_latency_ms": 1126.48,
+        "error": ""
+      },
+      {
+        "id": "qa-007",
+        "type": "answerable",
+        "question": "扫地机器人吸力多大够用？",
+        "answer": "日常使用2000-3000帕斯卡(Pa)的吸力已经足够；对于有地毯或者养宠物的家庭，则建议选择4000帕斯卡以上的吸力。",
+        "sources": [
+          "选购指南.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确反映了标准答案中的关键信息，并且所有提到的信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 0.0,
+        "passed": true,
+        "gen_latency_ms": 1583.1,
+        "judge_latency_ms": 1548.34,
+        "error": ""
+      },
+      {
+        "id": "qa-008",
+        "type": "answerable",
+        "question": "胶刷和毛刷怎么选？",
+        "answer": "胶刷适合有宠物或长发的家庭，因为其防缠绕性能好；毛刷则更适合清理地毯缝隙。如果需要兼顾两者的特点，可以选择胶毛一体刷。",
+        "sources": [
+          "选购指南.txt",
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1726.12,
+        "judge_latency_ms": 1660.78,
+        "error": ""
+      },
+      {
+        "id": "qa-009",
+        "type": "answerable",
+        "question": "复式或多楼层怎么选扫地机器人？",
+        "answer": "选择复式或多楼层使用的扫地机器人时，应该优先考虑具备多地图记忆和自动楼层识别功能的型号。这样可以确保扫地机器人在不同楼层之间工作时能够有效区分并记住各层的地图信息，提高清洁效率。",
+        "sources": [
+          "选购指南.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确反映了标准答案的核心要点，并且所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 2138.7,
+        "judge_latency_ms": 1572.35,
+        "error": ""
+      },
+      {
+        "id": "qa-010",
+        "type": "answerable",
+        "question": "扫地机器人到货后怎么验机？",
+        "answer": "扫地机器人到货后验机步骤包括：1. 检查外观和配件是否完好且齐全。2. 首次充满电后开机，检查电量显示和充电指示。3. 进行全屋建图测试，确保地图完整、房间划分合理。4. 测试回充功能是否正常。5. 分别测试扫地、拖地等功能以及禁区设置。",
+        "sources": [
+          "选购指南.txt",
+          "选购指南.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地涵盖了标准答案中的核心要点，所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 0.6666666666666666,
+        "passed": true,
+        "gen_latency_ms": 2676.0,
+        "judge_latency_ms": 1551.95,
+        "error": ""
+      },
+      {
+        "id": "qa-011",
+        "type": "answerable",
+        "question": "扫地机器人报 E01 错误怎么处理？",
+        "answer": "E01错误表示碰撞传感器异常，可能是前撞板被卡住、异物卡入缝隙或碰撞传感器损坏。处理方法是先断电后拍打前撞板并清理缝隙，然后重启机器；如果仍然报错，则需要联系售后处理。",
+        "sources": [
+          "故障排除.txt",
+          "故障排除.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2919.48,
+        "judge_latency_ms": 1371.57,
+        "error": ""
+      },
+      {
+        "id": "qa-012",
+        "type": "answerable",
+        "question": "扫地机器人报 E02 是什么原因？",
+        "answer": "扫地机器人报E02错误是因为尘盒未放到位、卡扣松动，或是尘盒微动开关、磁铁故障。处理方法是取出尘盒重新安装，并确认卡扣到位；同时检查磁铁是否丢失。",
+        "sources": [
+          "故障排除.txt",
+          "故障排除.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2370.88,
+        "judge_latency_ms": 1366.53,
+        "error": ""
+      },
+      {
+        "id": "qa-013",
+        "type": "answerable",
+        "question": "扫地机器人报 E03 主刷异常怎么办？",
+        "answer": "主刷异常可能是由于被毛发、线缆缠绕，或者主刷电机、传动部件故障导致。请先断电后取下主刷清理缠绕物，然后重启机器；如果仍然报错，则需要送修。",
+        "sources": [
+          "故障排除.txt",
+          "故障排除.txt",
+          "维护保养.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2140.37,
+        "judge_latency_ms": 1298.05,
+        "error": ""
+      },
+      {
+        "id": "qa-014",
+        "type": "answerable",
+        "question": "扫地机器人报 E05 悬崖或轮组异常怎么排查？",
+        "answer": "E05错误表示悬崖或轮组异常，可能是由于下视传感器被灰尘遮挡、机器悬空、轮组卡死，或者黑色地毯、反光地面导致误判。处理方法包括擦净底部传感器、将机器放置在平整地面上重启、检查驱动轮是否缠绕。",
+        "sources": [
+          "故障排除.txt",
+          "故障排除.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确反映了标准答案中的核心事实，所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2000.81,
+        "judge_latency_ms": 1513.31,
+        "error": ""
+      },
+      {
+        "id": "qa-015",
+        "type": "answerable",
+        "question": "扫地机器人原地打转不前进怎么办？",
+        "answer": "扫地机器人原地打转不前进可能是由于单侧驱动轮卡死、轮子悬空、下视传感器误判悬崖或主板故障导致。解决方法包括清理驱动轮毛发，检查是否卡在地毯边缘或门槛，擦净下视传感器后重启。如果问题依旧，建议送修。",
+        "sources": [
+          "故障排除.txt",
+          "故障排除.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地反映了标准答案及检索上下文中的关键信息。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2194.29,
+        "judge_latency_ms": 1926.0,
+        "error": ""
+      },
+      {
+        "id": "qa-016",
+        "type": "answerable",
+        "question": "扫地机器人无法开机或无法充电怎么办？",
+        "answer": "如果扫地机器人无法开机或充电，请检查以下几点：确保电源插座正常工作；检查机器人的电池是否安装正确，接触点是否有异物或腐蚀；清理充电触点以保证良好接触。若问题依旧存在，可能是电池损坏或其他内部故障，建议联系售后服务进行专业检修。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "故障排除.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "模型回答提到了部分正确解决方案，但遗漏了标准答案中的关键点如电池亏电休眠。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2721.07,
+        "judge_latency_ms": 1595.71,
+        "error": ""
+      },
+      {
+        "id": "qa-017",
+        "type": "answerable",
+        "question": "扫地机器人回充失败怎么办？",
+        "answer": "确认充电座通电且周围无遮挡，位置未被移动；擦拭回充探头和充电触点；尝试在App中手动触发回充。若问题依旧，请联系售后检测。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答涵盖了标准答案中的所有关键点，且内容与检索上下文一致。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1869.16,
+        "judge_latency_ms": 1337.44,
+        "error": ""
+      },
+      {
+        "id": "qa-018",
+        "type": "answerable",
+        "question": "扫地机器人频繁掉线怎么办？",
+        "answer": "扫地机器人频繁掉线可能是由于Wi-Fi信号弱、连接5G频段、路由器防蹭网设置或MAC过滤导致。解决方法包括改用2.4G频段，将机器加入白名单，重启路由器和机器，必要时重新配网。",
+        "sources": [
+          "故障排除.txt",
+          "扫地机器人100问2.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确且完全基于提供的参考资料，没有添加额外信息。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1862.73,
+        "judge_latency_ms": 1409.09,
+        "error": ""
+      },
+      {
+        "id": "qa-019",
+        "type": "answerable",
+        "question": "扫地机器人拖地不出水怎么办？",
+        "answer": "扫地机器人拖地不出水可能是因为水箱无水、安装不到位、出水孔或气孔堵塞，电控水箱泵故障。处理方法包括加水并重新安装、疏通出水孔和气孔、在App中确认水量档位设置正确。如果以上步骤后仍然不出水，则需要送修。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "故障排除.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地反映了标准答案中的关键点，并且所有信息都可在提供的检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2494.19,
+        "judge_latency_ms": 1645.38,
+        "error": ""
+      },
+      {
+        "id": "qa-020",
+        "type": "answerable",
+        "question": "扫地机器人电池鼓包怎么办？",
+        "answer": "扫地机器人电池鼓包时应立即停止使用和充电，避免挤压或刺破，并联系售后更换。电池鼓包存在起火风险。",
+        "sources": [
+          "故障排除.txt",
+          "故障排除.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确反映了标准答案中的核心事实，且所有信息均可在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1763.68,
+        "judge_latency_ms": 1446.23,
+        "error": ""
+      },
+      {
+        "id": "qa-021",
+        "type": "answerable",
+        "question": "每天清扫后要做哪些维护？",
+        "answer": "每次清扫后需要进行以下维护：清空尘盒，清理主刷并检查其轴承，擦拭回充传感器、沿墙传感器和底部的下视传感器，清洗拖布，并检查地面是否有电线、塑料袋或绳子等障碍物。",
+        "sources": [
+          "维护保养.txt",
+          "维护保养.txt",
+          "维护保养.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地包含了标准答案中的所有关键点，并且这些信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1870.47,
+        "judge_latency_ms": 1438.53,
+        "error": ""
+      },
+      {
+        "id": "qa-022",
+        "type": "answerable",
+        "question": "滤网多久清洗一次，能不能水洗？",
+        "answer": "滤网建议1-3个月清洗一次，可以水洗，但需完全晾干后再装回。",
+        "sources": [
+          "维护保养.txt",
+          "扫拖一体机器人100问.txt",
+          "维护保养.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "清洗频率与标准答案不一致，但关于水洗和晾干的信息准确。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1276.66,
+        "judge_latency_ms": 1385.96,
+        "error": ""
+      },
+      {
+        "id": "qa-023",
+        "type": "answerable",
+        "question": "拖布怎么清洗和晾干？",
+        "answer": "拖布清洗可选择手洗或部分机型支持机洗，建议使用洗衣袋并避免高温烘干。晾干通常需要2-4小时，具体时间根据环境湿度和机型而定。对于自动洗拖布的设备，基站会用清水冲洗拖布并通过热风烘干，每次使用后建议倒空污水箱以防止异味。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "提到了使用洗衣袋和避免高温烘干，但未强调带硬质背板的拖布不能高温烘烤。",
+          "error": ""
+        },
+        "term_hit_rate": 0.6666666666666666,
+        "passed": true,
+        "gen_latency_ms": 2627.09,
+        "judge_latency_ms": 1525.9,
+        "error": ""
+      },
+      {
+        "id": "qa-024",
+        "type": "answerable",
+        "question": "充电座怎么维护？",
+        "answer": "充电座的维护主要包括每周和每季度的检查。每周需要擦拭充电座金属触点及周围地面，保证回充接触良好；每季度则需检查基站电源线是否有松动或老化现象，并确保插头连接稳固。此外，如果遇到不回充的情况，应确认充电座是否通电、位置未被移动且周围无障碍物，同时清洁回充探头并尝试手动触发回充功能。若仍存在问题，则可能需要进一步检查电池状态或联系售后服务。",
+        "sources": [
+          "维护保养.txt",
+          "维护保养.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 3801.19,
+        "judge_latency_ms": 1402.47,
+        "error": ""
+      },
+      {
+        "id": "qa-025",
+        "type": "answerable",
+        "question": "激光雷达窗口怎么清洁？",
+        "answer": "用干布轻擦激光雷达窗口，避免使用酒精或腐蚀性清洁剂。",
+        "sources": [
+          "维护保养.txt",
+          "扫地机器人100问2.txt",
+          "维护保养.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地反映了标准答案中的关键信息，所有内容均可在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 913.74,
+        "judge_latency_ms": 1535.29,
+        "error": ""
+      },
+      {
+        "id": "qa-026",
+        "type": "answerable",
+        "question": "滤网、边刷、主刷、拖布和尘袋多久换一次？",
+        "answer": "滤网1-3个月更换，可水洗适当延长；边刷3-6个月更换，变形掉毛需立即更换；主刷6-12个月视磨损情况更换；拖布3-6个月更换，变硬、掉毛或有异味时更换；尘袋1-2个月更换，宠物家庭约1个月。",
+        "sources": [
+          "维护保养.txt",
+          "维护保养.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确反映了标准答案中的所有关键点，并且所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2363.43,
+        "judge_latency_ms": 1411.75,
+        "error": ""
+      },
+      {
+        "id": "qa-027",
+        "type": "answerable",
+        "question": "梅雨季使用扫地机器人要注意什么？",
+        "answer": "梅雨季使用扫地机器人要注意加强拖布和基站的烘干，每天倒掉污水箱中的水，以防霉菌生长和产生异味。",
+        "sources": [
+          "维护保养.txt",
+          "选购指南.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确反映了标准答案中的关键点，且所有信息均能在参考资料中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1403.7,
+        "judge_latency_ms": 1449.56,
+        "error": ""
+      },
+      {
+        "id": "qa-028",
+        "type": "answerable",
+        "question": "长期不用扫地机器人怎么存放？",
+        "answer": "长期不用扫地机器人时，应先清空尘盒、水箱和污水箱，并清洗晾干拖布。然后充满电后关机，存放在干燥阴凉处。每隔1-2个月补充一次电量以避免电池亏电。重新使用前需检查传感器、刷子和充电触点是否正常。",
+        "sources": [
+          "维护保养.txt",
+          "扫地机器人100问2.txt",
+          "维护保养.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地包含了标准答案中的所有关键点，信息与检索上下文一致。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1969.56,
+        "judge_latency_ms": 1500.2,
+        "error": ""
+      },
+      {
+        "id": "qa-029",
+        "type": "answerable",
+        "question": "第一次使用扫地机器人需要充多久？",
+        "answer": "第一次使用扫地机器人建议先充满电再建图，通常需要3-4小时。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "模型回答遗漏了首次建图尽量一次走完全屋的信息，但提供的信息与检索上下文一致。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 929.7,
+        "judge_latency_ms": 1389.78,
+        "error": ""
+      },
+      {
+        "id": "qa-030",
+        "type": "answerable",
+        "question": "扫地机器人可以一直放在充电座上吗？",
+        "answer": "可以一直放在充电座上，机器充满后会自动停止充电。但长期处于高温环境不建议一直插电，应保持充电座通风。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答与标准答案一致，且所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1223.02,
+        "judge_latency_ms": 1434.91,
+        "error": ""
+      },
+      {
+        "id": "qa-031",
+        "type": "answerable",
+        "question": "厨房能扫吗？",
+        "answer": "可以扫厨房的干垃圾，但不要让机器人清理油污和湿垃圾；清扫前需捡起易卡住机器的物品如菜叶、塑料袋等。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "选购指南.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确反映了标准答案的核心事实，所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1643.91,
+        "judge_latency_ms": 1377.04,
+        "error": ""
+      },
+      {
+        "id": "qa-032",
+        "type": "answerable",
+        "question": "扫地机器人能进卫生间吗？",
+        "answer": "扫地机器人可以进入卫生间的干区，但不建议进入湿区。因为地面有水时容易打滑、把水拖开，也可能损坏机器。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "选购指南.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案及检索上下文完全一致，无额外推断。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1392.35,
+        "judge_latency_ms": 1288.67,
+        "error": ""
+      },
+      {
+        "id": "qa-033",
+        "type": "answerable",
+        "question": "阳台门槛太高怎么办？",
+        "answer": "对于阳台门槛太高问题，如果门槛超过2厘米，建议加装爬坡垫或者在应用程序中将阳台设置为禁区。",
+        "sources": [
+          "选购指南.txt",
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案及检索上下文一致，准确且忠实。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1165.47,
+        "judge_latency_ms": 1283.68,
+        "error": ""
+      },
+      {
+        "id": "qa-034",
+        "type": "answerable",
+        "question": "地面电线怎么处理？",
+        "answer": "地面电线应尽量沿墙收纳或使用理线器，避免被扫地机器人卷入。特别注意充电线等较细的电线更易发生危险。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在参考资料中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1457.48,
+        "judge_latency_ms": 1441.14,
+        "error": ""
+      },
+      {
+        "id": "qa-035",
+        "type": "answerable",
+        "question": "长毛地毯能用扫地机器人吗？",
+        "answer": "可以使用扫地机器人清理长毛地毯，但需要注意的是，由于阻力较大，扫地机器人容易卡住。建议选择大吸力和高越障能力的机型，并减少清扫频率。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "核心事实与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1637.28,
+        "judge_latency_ms": 1374.71,
+        "error": ""
+      },
+      {
+        "id": "qa-036",
+        "type": "answerable",
+        "question": "拖地能加消毒液吗？",
+        "answer": "不建议自行添加消毒液，因为这可能腐蚀机器管路或产生泡沫。应使用官方推荐的清洁液，或者按照产品说明进行稀释。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1391.31,
+        "judge_latency_ms": 1362.38,
+        "error": ""
+      },
+      {
+        "id": "qa-037",
+        "type": "answerable",
+        "question": "扫地机器人能吸面粉这类细粉吗？",
+        "answer": "不建议使用扫地机器人吸面粉这类细粉，因为细粉容易堵塞滤网和风道，甚至可能进入电机。应使用吸尘器或扫帚处理。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地反映了标准答案的核心信息，并且所有内容都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1508.01,
+        "judge_latency_ms": 2256.33,
+        "error": ""
+      },
+      {
+        "id": "qa-038",
+        "type": "answerable",
+        "question": "扫地机器人能吸碎玻璃吗？",
+        "answer": "扫地机器人不建议用来吸碎玻璃，因为玻璃碎片可能刺破尘盒、划伤地板或损坏风机；应先人工清理。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且完全基于提供的检索上下文。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1280.18,
+        "judge_latency_ms": 1272.16,
+        "error": ""
+      },
+      {
+        "id": "qa-039",
+        "type": "answerable",
+        "question": "扫地机器人能吸烟头吗？",
+        "answer": "不能吸烟头，因为烟头可能仍带火星，存在引燃尘盒垃圾的风险。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "选购指南.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且依据来源于检索上下文。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1086.15,
+        "judge_latency_ms": 1161.8,
+        "error": ""
+      },
+      {
+        "id": "qa-040",
+        "type": "answerable",
+        "question": "扫地机器人连不上 Wi-Fi 怎么办？",
+        "answer": "确认使用2.4G频段Wi-Fi、输入正确的密码，并确保手机靠近扫地机器人；尝试重启路由器和机器后重新配网。如果连接了新的路由器或更改了Wi-Fi名称及密码，需要在App中重新进行网络配置。",
+        "sources": [
+          "故障排除.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2149.49,
+        "judge_latency_ms": 1408.05,
+        "error": ""
+      },
+      {
+        "id": "qa-041",
+        "type": "answerable",
+        "question": "吸力档位怎么选？",
+        "answer": "日常使用标准档，地毯和缝隙清洁时选择强力档，夜间或需要安静环境时使用静音档。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案完全一致，且所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1202.95,
+        "judge_latency_ms": 1432.35,
+        "error": ""
+      },
+      {
+        "id": "qa-042",
+        "type": "answerable",
+        "question": "拖布多久清洗一次？",
+        "answer": "拖布一般3-6个月更换一次，如果变硬、掉毛、洗不干净或有异味就需要提前更换。对于多久清洗一次的具体频率参考资料中没有直接提及，但根据其使用情况和卫生考虑，建议每次使用后都进行清洗。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt",
+          "维护保养.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "提到的更换频率正确但未准确回答清洗频率，建议部分为合理推断。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2071.42,
+        "judge_latency_ms": 1571.6,
+        "error": ""
+      },
+      {
+        "id": "qa-043",
+        "type": "answerable",
+        "question": "污水箱多久倒一次？",
+        "answer": "建议每次拖地后倒空污水箱；夏天或高频使用时每天倒一次，避免产生异味。在梅雨季节也应每天倒空污水箱，防止霉菌和异味。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "维护保养.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确反映了标准答案的核心内容，且所有信息都能在提供的上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1588.93,
+        "judge_latency_ms": 1500.34,
+        "error": ""
+      },
+      {
+        "id": "qa-044",
+        "type": "answerable",
+        "question": "基站有异味怎么办？",
+        "answer": "如果基站出现异味，可以考虑使用热风烘干功能来减少拖布潮湿发霉和异味问题。同时，定期清洁基站也很重要，包括每周冲洗清洗盘、倒污水箱；每月拆洗滤网和底部沉积物。",
+        "sources": [
+          "选购指南.txt",
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "提到了清洁基站和使用热风烘干，但未提及倒空污水箱和使用官方清洁液。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2624.04,
+        "judge_latency_ms": 2242.46,
+        "error": ""
+      },
+      {
+        "id": "qa-045",
+        "type": "answerable",
+        "question": "热风烘干有必要吗？",
+        "answer": "热风烘干建议选，能减少拖布潮湿发霉和异味，尤其在梅雨季效果明显。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "选购指南.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1081.76,
+        "judge_latency_ms": 1367.34,
+        "error": ""
+      },
+      {
+        "id": "qa-046",
+        "type": "answerable",
+        "question": "拖布能用洗衣机洗吗？",
+        "answer": "部分拖布可机洗，建议装洗衣袋并避免高温烘干；带硬质背板的拖布只能手洗。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均可在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1164.68,
+        "judge_latency_ms": 1620.88,
+        "error": ""
+      },
+      {
+        "id": "qa-047",
+        "type": "answerable",
+        "question": "拖布多久换一次？",
+        "answer": "一般3–6个月更换一次拖布；如果拖布变硬、掉毛、洗不干净或有异味，就需要更换。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "维护保养.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1377.15,
+        "judge_latency_ms": 1323.42,
+        "error": ""
+      },
+      {
+        "id": "qa-048",
+        "type": "answerable",
+        "question": "拖地水量怎么调？",
+        "answer": "木地板应使用低水量，瓷砖则可使用中高水量。初次拖地时建议先从低水量开始，观察地面水痕情况后再适当调整。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1834.37,
+        "judge_latency_ms": 1513.82,
+        "error": ""
+      },
+      {
+        "id": "qa-049",
+        "type": "answerable",
+        "question": "木地板能拖吗？",
+        "answer": "木地板可以使用微湿的拖把进行清洁，需要注意控制水量，并且及时用干布擦干。对于实木地板，则建议使用更低的水量或者直接干擦。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确反映了标准答案的核心事实，且所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 2052.08,
+        "judge_latency_ms": 1428.89,
+        "error": ""
+      },
+      {
+        "id": "qa-050",
+        "type": "answerable",
+        "question": "瓷砖拖完有水痕怎么办？",
+        "answer": "降低水量、清洗或更换拖布、开启干拖模式；如果水质较硬也会留下水痕，可以尝试使用过滤水。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1335.23,
+        "judge_latency_ms": 1498.03,
+        "error": ""
+      },
+      {
+        "id": "qa-051",
+        "type": "answerable",
+        "question": "拖地时地毯怎么处理？",
+        "answer": "拖地时可以设置地毯为禁区或开启拖布抬升功能，避免湿地毯和已清洁区域被弄脏。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "回答部分正确，但遗漏了扫地时开启地毯增压的关键点。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1274.19,
+        "judge_latency_ms": 1339.09,
+        "error": ""
+      },
+      {
+        "id": "qa-052",
+        "type": "answerable",
+        "question": "拖布抬升重要吗？",
+        "answer": "拖布抬升很重要，能够避免湿地毯和已清洁区域被弄脏，并减少回洗次数。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均可在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1157.92,
+        "judge_latency_ms": 2583.49,
+        "error": ""
+      },
+      {
+        "id": "qa-053",
+        "type": "answerable",
+        "question": "清洁液怎么选？",
+        "answer": "选择清洁液时，应选用官方推荐或中性清洁液，避免使用泡沫型、强酸碱或含有漂白成分的产品。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均可在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1178.52,
+        "judge_latency_ms": 1323.39,
+        "error": ""
+      },
+      {
+        "id": "qa-054",
+        "type": "answerable",
+        "question": "扫地机器人能加自来水吗？",
+        "answer": "可以加自来水，但水质硬的地区建议使用过滤水以减少水垢堵塞。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且内容完全基于提供的检索上下文。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 1044.39,
+        "judge_latency_ms": 1353.14,
+        "error": ""
+      },
+      {
+        "id": "qa-055",
+        "type": "answerable",
+        "question": "拖地有异味怎么办？",
+        "answer": "清洗拖布和水箱、倒空污水、开启烘干；必要时更换拖布。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且完全基于检索上下文中的信息。",
+          "error": ""
+        },
+        "term_hit_rate": null,
+        "passed": true,
+        "gen_latency_ms": 980.68,
+        "judge_latency_ms": 1419.22,
+        "error": ""
+      }
+    ],
+    "negative": [
+      {
+        "id": "neg-001",
+        "type": "negative",
+        "question": "你们能上门修洗衣机吗？",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "选购指南.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了请求超出服务范围，并建议用户联系对应品牌售后。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 142.63,
+        "judge_latency_ms": 997.44,
+        "error": ""
+      },
+      {
+        "id": "neg-002",
+        "type": "negative",
+        "question": "扫地机器人能帮我洗碗吗？",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "选购指南.txt",
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "回答明确指出了无法处理该请求，并解释了服务范围。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 113.99,
+        "judge_latency_ms": 1033.07,
+        "error": ""
+      },
+      {
+        "id": "neg-003",
+        "type": "negative",
+        "question": "能帮我订一张去上海的机票吗？",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "正确拒答，明确指出请求不在服务范围内，并将话题拉回扫地/扫拖机器人业务。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 135.95,
+        "judge_latency_ms": 1261.98,
+        "error": ""
+      },
+      {
+        "id": "neg-004",
+        "type": "negative",
+        "question": "帮我写一段 Python 爬虫代码。",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "故障排除.txt",
+          "故障排除.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了请求超出服务范围，并指出了具体的服务领域。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 130.7,
+        "judge_latency_ms": 1007.7,
+        "error": ""
+      },
+      {
+        "id": "neg-005",
+        "type": "negative",
+        "question": "推荐一部适合周末看的电影。",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "选购指南.txt",
+          "维护保养.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了请求超出服务范围，并未尝试完成超范围任务。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 155.69,
+        "judge_latency_ms": 1012.18,
+        "error": ""
+      },
+      {
+        "id": "neg-006",
+        "type": "negative",
+        "question": "帮我写一篇 800 字的作文。",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "正确拒绝了超出服务范围的请求，并指明了自己的服务范围。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 134.29,
+        "judge_latency_ms": 1000.3,
+        "error": ""
+      },
+      {
+        "id": "neg-007",
+        "type": "negative",
+        "question": "感冒发烧应该吃什么药？",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了无法回答并指出了服务范围",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 140.19,
+        "judge_latency_ms": 757.25,
+        "error": ""
+      },
+      {
+        "id": "neg-008",
+        "type": "negative",
+        "question": "推荐几只最近能涨的股票。",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "选购指南.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了无法回答投资相关问题，并指出了服务范围。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 164.62,
+        "judge_latency_ms": 929.14,
+        "error": ""
+      },
+      {
+        "id": "neg-009",
+        "type": "negative",
+        "question": "帮我把这段英文翻译成中文。",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了无法处理翻译请求，并指出了服务范围。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 135.45,
+        "judge_latency_ms": 946.1,
+        "error": ""
+      },
+      {
+        "id": "neg-010",
+        "type": "negative",
+        "question": "帮我订一份外卖。",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了无法处理订外卖的请求，并指出了服务范围。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 129.13,
+        "judge_latency_ms": 1051.99,
+        "error": ""
+      },
+      {
+        "id": "neg-011",
+        "type": "negative",
+        "question": "洗衣机报 E01 错误怎么处理？",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "故障排除.txt",
+          "故障排除.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了无法回答，并指出了服务范围仅限于扫地/扫拖机器人相关问题。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 193.95,
+        "judge_latency_ms": 1128.87,
+        "error": ""
+      },
+      {
+        "id": "neg-012",
+        "type": "negative",
+        "question": "扫地机器人能当监控摄像头用吗？",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "选购指南.txt",
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "回答已明确指出请求超出服务范围，并建议了正确的求助方向。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 120.78,
+        "judge_latency_ms": 1162.54,
+        "error": ""
+      },
+      {
+        "id": "neg-013",
+        "type": "negative",
+        "question": "能帮我充话费吗？",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "故障排除.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "正确地说明了请求超出服务范围，并未尝试完成超范围任务。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 132.66,
+        "judge_latency_ms": 966.13,
+        "error": ""
+      },
+      {
+        "id": "neg-014",
+        "type": "negative",
+        "question": "扫地机器人能帮我遛狗吗？",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "选购指南.txt",
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了请求超出服务范围，并指出了可提供的服务内容。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 154.16,
+        "judge_latency_ms": 1289.98,
+        "error": ""
+      },
+      {
+        "id": "neg-015",
+        "type": "negative",
+        "question": "扫地机器人能做饭吗？",
+        "answer": "抱歉，这个请求超出了我的服务范围。我只负责扫地/扫拖机器人的选购、使用、维护和故障排查；编程、翻译、医疗、投资、订票等通用服务我无法处理。如果是其他家电的问题，建议查看对应品牌的说明书或联系其售后。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "refusal": 1,
+          "reason": "正确说明了无法回答的原因，并且没有尝试完成超出范围的任务。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 134.7,
+        "judge_latency_ms": 1744.12,
+        "error": ""
+      }
+    ],
+    "report": [
+      {
+        "id": "rep-001",
+        "type": "report",
+        "question": "帮我看看用户 1001 在 2026-10 的使用报告，主要问题和对比变化是什么？",
+        "user_id": "1001",
+        "month": "2026-10",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 65㎡公寓\n- 家庭结构: 单身\n- 地面材质: 木地板\n\n## 二、清洁效率\n- 覆盖率: 87%\n- 日均清扫面积: 47㎡\n- 漏扫区域: 茶几底部（高度不足）\n\n## 三、耗材状态\n- 主刷寿命: 剩余28天\n- 滤网状态: 正常\n- 边刷: 记录未提供\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n- 集尘袋: 记录未提供\n\n## 四、环比变化\n- 覆盖率: 下降1%\n- 日均清扫面积: 减少1㎡\n- 本月出差4天，出勤减少\n\n## 五、保养建议\n1. **检查并清理茶几底部**: 由于茶几底部高度不足导致漏扫，建议调整家具位置或定期手动清理该区域。\n2. **关注主刷寿命**: 主刷剩余寿命为28天，建议在接下来的一个月内准备更换新的主刷。\n3. **保持滤网清洁**: 滤网状态正常，但仍需定期清理以保证吸力和清洁效果。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1001",
+              "month": "2026-10"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "65㎡公寓",
+                  "anchors": [
+                    "65㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "单身",
+                  "anchors": [
+                    "单身"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "木地板",
+                  "anchors": [
+                    "木地板"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:87%",
+                  "anchors": [
+                    "覆盖率",
+                    "87%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "日均清扫:47㎡",
+                  "anchors": [
+                    "日均清扫",
+                    "47㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "漏扫区域:茶几底部（高度不足）",
+                  "anchors": [
+                    "漏扫区域",
+                    "茶几底部"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "主刷寿命:剩余28天",
+                  "anchors": [
+                    "主刷寿命",
+                    "剩余28天"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网状态:正常",
+                  "anchors": [
+                    "滤网状态",
+                    "正常"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率-1%",
+                  "anchors": [
+                    "覆盖率",
+                    "-1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "日均清扫-1㎡",
+                  "anchors": [
+                    "日均清扫",
+                    "-1㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "本月出差4天出勤减少",
+                  "anchors": [
+                    "本月出差",
+                    "4天"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始数据，且提供了具体的保养建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 7378.52,
+        "judge_latency_ms": 1096.15,
+        "error": ""
+      },
+      {
+        "id": "rep-002",
+        "type": "report",
+        "question": "用户 1002 在 2026-09 的清洁效率和耗材情况怎么样？",
+        "user_id": "1002",
+        "month": "2026-09",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：70㎡公寓\n- 家庭结构：情侣\n- 地面材质：瓷砖\n\n## 二、清洁效率\n- 覆盖率：89%\n- 避障失败：1次/周（数据线）\n\n## 三、耗材状态\n- 边刷：已更换（新）\n- 尘盒清理：每周1次\n\n## 四、环比变化\n- 覆盖率增加1%\n- 避障失败减少1次/周\n- 边刷更换后贴边更稳\n\n## 五、保养建议\n1. **定期检查并清理尘盒**：保持每周一次的频率，确保尘盒内无堵塞，以维持机器人的清洁效率。\n2. **注意电线等障碍物**：尽管避障失败次数有所减少，但仍需注意地面的数据线等障碍物，避免影响机器人的正常工作。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1002",
+              "month": "2026-09"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "70㎡公寓",
+                  "anchors": [
+                    "70㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "情侣",
+                  "anchors": [
+                    "情侣"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "瓷砖",
+                  "anchors": [
+                    "瓷砖"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:89%",
+                  "anchors": [
+                    "覆盖率",
+                    "89%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "避障失败:1次/周（数据线）",
+                  "anchors": [
+                    "避障失败",
+                    "1次/周"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "边刷已更换（新）",
+                  "anchors": [
+                    "边刷已更换（新）"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "尘盒清理:每周1次",
+                  "anchors": [
+                    "尘盒清理",
+                    "每周1次"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率+1%",
+                  "anchors": [
+                    "覆盖率",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "避障失败-1次/周",
+                  "anchors": [
+                    "避障失败",
+                    "-1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "边刷更换后贴边更稳",
+                  "anchors": [
+                    "边刷更换后贴边更稳"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告准确反映了原始数据，并提供了基于用户情况的具体建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 5127.84,
+        "judge_latency_ms": 1319.3,
+        "error": ""
+      },
+      {
+        "id": "rep-003",
+        "type": "report",
+        "question": "分析用户 1003 在 2026-11 的使用报告，和上月相比有哪些变化？",
+        "user_id": "1003",
+        "month": "2026-11",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 90㎡两居\n- 家庭结构: 1狗\n- 地面材质: 短毛地毯\n\n## 二、清洁效率\n- 毛发清理: 94%\n- 地毯增压使用: 17次/月\n\n## 三、耗材状态\n- 胶刷寿命: 剩余8天\n- 滤网状态: 正常\n\n## 四、环比变化\n- 毛发清理: +2%\n- 地毯增压使用: +2次/月\n- 胶刷: 临近更换\n\n## 五、保养建议\n1. **及时更换胶刷**：胶刷剩余寿命为8天，建议尽快购买并更换新的胶刷以保证清洁效果。\n2. **定期检查滤网**：虽然滤网状态目前正常，但建议每月至少检查一次滤网是否需要清洗或更换，以保持良好的吸尘性能。\n3. **增加地毯增压次数**：本月地毯增压使用频率增加了2次/月，如果家中宠物掉毛较多，可以考虑适当增加地毯增压的使用频率，以提高清洁效果。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1003",
+              "month": "2026-11"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "90㎡两居",
+                  "anchors": [
+                    "90㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "1狗",
+                  "anchors": [
+                    "1"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "短毛地毯",
+                  "anchors": [
+                    "短毛地毯"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "毛发清理:94%",
+                  "anchors": [
+                    "毛发清理",
+                    "94%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "地毯增压使用:17次/月",
+                  "anchors": [
+                    "地毯增压使用",
+                    "17次/月"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "胶刷寿命:剩余8天",
+                  "anchors": [
+                    "胶刷寿命",
+                    "剩余8天"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网状态:正常",
+                  "anchors": [
+                    "滤网状态",
+                    "正常"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "毛发清理+2%",
+                  "anchors": [
+                    "毛发清理",
+                    "+2%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "地毯增压+2次/月",
+                  "anchors": [
+                    "地毯增压",
+                    "+2次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "胶刷临近更换",
+                  "anchors": [
+                    "胶刷临近更换"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告准确反映了原始记录内容，并提供了基于数据的具体建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 11876.54,
+        "judge_latency_ms": 1365.45,
+        "error": ""
+      },
+      {
+        "id": "rep-004",
+        "type": "report",
+        "question": "帮我看看用户 1004 在 2026-10 的使用报告，主要问题和对比变化是什么？",
+        "user_id": "1004",
+        "month": "2026-10",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 85㎡两居\n- 家庭结构: 2猫\n- 地面材质: 混合地面\n\n## 二、清洁效率\n- 猫砂泼洒处理: 7次/月\n- 自动回充成功率: 91%\n\n## 三、耗材状态\n- 主刷缠绕: 中度\n- 集尘袋: 已更换（新）\n\n## 四、环比变化\n- 猫砂泼洒处理次数减少 1次/月\n- 自动回充成功率提高 1%\n- 集尘袋已更换完成\n\n## 五、保养建议\n1. **定期清理主刷**：主刷缠绕程度为中度，建议每周检查并清理一次主刷，防止缠绕物影响清扫效果。\n2. **监控集尘袋状态**：虽然集尘袋已更换为新的，但建议每两周检查一次集尘袋的填充情况，及时更换以保持良好的吸尘效果。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1004",
+              "month": "2026-10"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "85㎡两居",
+                  "anchors": [
+                    "85㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "2猫",
+                  "anchors": [
+                    "2"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "混合地面",
+                  "anchors": [
+                    "混合地面"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "猫砂泼洒处理:7次/月",
+                  "anchors": [
+                    "猫砂泼洒处理",
+                    "7次/月"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "自动回充成功率:91%",
+                  "anchors": [
+                    "自动回充成功率",
+                    "91%"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "主刷缠绕:中度",
+                  "anchors": [
+                    "主刷缠绕",
+                    "中度"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "集尘袋已更换（新）",
+                  "anchors": [
+                    "集尘袋已更换（新）"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 2,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "猫砂泼洒-1次/月",
+                  "anchors": [
+                    "猫砂泼洒",
+                    "-1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "回充+1%",
+                  "anchors": [
+                    "回充",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "集尘袋更换完成",
+                  "anchors": [
+                    "集尘袋更换完成"
+                  ],
+                  "matched": false
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 0.9,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始记录，且提供了具体的可执行建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 10456.15,
+        "judge_latency_ms": 1154.2,
+        "error": ""
+      },
+      {
+        "id": "rep-005",
+        "type": "report",
+        "question": "用户 1005 在 2026-08 的清洁效率和耗材情况怎么样？",
+        "user_id": "1005",
+        "month": "2026-08",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：120㎡三居\n- 家庭结构：老人\n- 地面材质：防滑砖\n\n## 二、清洁效率\n- 手动操作占比：93%\n- 定时清扫使用率：2次/周\n\n## 三、耗材状态\n- 电池衰减：28%\n- 水箱未激活\n\n## 四、环比变化\n- 手动操作占比减少1%\n- 定时清扫使用率增加1次/周\n- 电池衰减增加3%\n\n## 五、保养建议\n1. **定期检查电池**：电池衰减已达28%，建议定期检查电池状态，考虑在衰减进一步增加前更换电池。\n2. **激活并使用水箱**：水箱目前未激活，建议激活水箱以启用拖地功能，提升地面清洁效果。\n3. **优化定时清扫设置**：当前手动操作占比较高，可以尝试调整定时清扫的频率和时间，以减轻手动操作负担。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1005",
+              "month": "2026-08"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "120㎡三居",
+                  "anchors": [
+                    "120㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "老人",
+                  "anchors": [
+                    "老人"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "防滑砖",
+                  "anchors": [
+                    "防滑砖"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "手动操作占比:93%",
+                  "anchors": [
+                    "手动操作占比",
+                    "93%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "定时清扫使用率:2次/周",
+                  "anchors": [
+                    "定时清扫使用率",
+                    "2次/周"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "电池衰减:28%",
+                  "anchors": [
+                    "电池衰减",
+                    "28%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "水箱未激活",
+                  "anchors": [
+                    "水箱未激活"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "手动占比-1%",
+                  "anchors": [
+                    "手动占比",
+                    "-1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "定时使用+1次/周",
+                  "anchors": [
+                    "定时使用",
+                    "+1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "电池衰减+3%",
+                  "anchors": [
+                    "电池衰减",
+                    "+3%"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始数据且提供了相关建议",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 5819.67,
+        "judge_latency_ms": 1531.08,
+        "error": ""
+      },
+      {
+        "id": "rep-006",
+        "type": "report",
+        "question": "分析用户 1006 在 2026-07 的使用报告，和上月相比有哪些变化？",
+        "user_id": "1006",
+        "month": "2026-07",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 150㎡别墅\n- 家庭结构: 有儿童\n- 地面材质: 记录未提供\n\n## 二、清洁效率\n- 跨楼层失败: 4次/周\n- 玩具避障率: 74%\n\n## 三、耗材状态\n- 边刷更换: 2次/季度\n- 集尘袋消耗: 1个月/个\n- 主刷、滤网、尘盒、拖布的状态: 记录未提供\n\n## 四、环比变化\n- 跨楼层失败次数增加了1次/周\n- 玩具避障率下降了2%\n- 玩具散落增多\n\n## 五、保养建议\n1. **增加跨楼层功能的维护频率**：鉴于跨楼层失败次数有所增加，建议定期检查机器人的跨楼层组件，并确保其处于最佳工作状态。\n2. **优化玩具管理**：由于玩具散落增多导致避障率下降，可以考虑在清扫前先整理地面玩具，或设置虚拟墙以避免机器人频繁遇到障碍物。\n3. **关注边刷和集尘袋的更换周期**：按照记录显示，边刷每季度需要更换两次，集尘袋每月消耗一个。请严格按照此频率进行更换，以免影响清洁效果。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1006",
+              "month": "2026-07"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 2,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "150㎡别墅",
+                  "anchors": [
+                    "150㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "儿童",
+                  "anchors": [
+                    "儿童"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "多层",
+                  "anchors": [
+                    "多层"
+                  ],
+                  "matched": false
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "跨楼层失败:4次/周",
+                  "anchors": [
+                    "跨楼层失败",
+                    "4次/周"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "玩具避障率:74%",
+                  "anchors": [
+                    "玩具避障率",
+                    "74%"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "边刷更换:2次/季度",
+                  "anchors": [
+                    "边刷更换",
+                    "2次/季度"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "集尘袋消耗:1个月/个",
+                  "anchors": [
+                    "集尘袋消耗",
+                    "1个月/个"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "跨楼层失败+1次/周",
+                  "anchors": [
+                    "跨楼层失败",
+                    "+1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "玩具避障-2%",
+                  "anchors": [
+                    "玩具避障",
+                    "-2%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "玩具散落增多",
+                  "anchors": [
+                    "玩具散落增多"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 0.9,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实反映了原始记录，且提供了具体可执行建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 8174.41,
+        "judge_latency_ms": 1710.45,
+        "error": ""
+      },
+      {
+        "id": "rep-007",
+        "type": "report",
+        "question": "帮我看看用户 1007 在 2026-10 的使用报告，主要问题和对比变化是什么？",
+        "user_id": "1007",
+        "month": "2026-10",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 55㎡一居\n- 家庭结构: 独居\n- 地面材质: 复合地板\n\n## 二、清洁效率\n- 覆盖率: 92%\n- 日均清扫面积: 37㎡\n- 沿边清扫: 无死角\n\n## 三、耗材状态\n- 拖布磨损: 轻度\n- 滤网寿命: 剩余20天\n\n## 四、环比变化\n- 覆盖率: +1%\n- 滤网: 寿命临近更换\n\n## 五、保养建议\n1. **及时更换滤网**：滤网剩余寿命为20天，建议在接下来的两周内购买并更换新的滤网。\n2. **检查拖布状态**：虽然拖布目前磨损程度为轻度，但定期检查和清洗拖布可以延长其使用寿命。如果发现明显磨损或脏污，请及时更换。\n3. **保持地面整洁**：继续维持良好的地面环境，避免杂物堆积，以确保机器人能够高效清扫。\n\n主要问题：\n- 滤网寿命临近，需要尽快更换。\n- 虽然覆盖率有所提升，但仍需关注沿边清扫效果，确保无死角。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1007",
+              "month": "2026-10"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "55㎡一居",
+                  "anchors": [
+                    "55㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "独居",
+                  "anchors": [
+                    "独居"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "复合地板",
+                  "anchors": [
+                    "复合地板"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:92%",
+                  "anchors": [
+                    "覆盖率",
+                    "92%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "日均清扫:37㎡",
+                  "anchors": [
+                    "日均清扫",
+                    "37㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "沿边清扫无死角",
+                  "anchors": [
+                    "沿边清扫无死角"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "拖布磨损:轻度",
+                  "anchors": [
+                    "拖布磨损",
+                    "轻度"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网寿命:剩余20天",
+                  "anchors": [
+                    "滤网寿命",
+                    "剩余20天"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 1,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率+1%",
+                  "anchors": [
+                    "覆盖率",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网临近更换",
+                  "anchors": [
+                    "滤网临近更换"
+                  ],
+                  "matched": false
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 0.9,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告准确反映了原始记录信息，并提供了基于用户数据的具体建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 7651.3,
+        "judge_latency_ms": 1491.1,
+        "error": ""
+      },
+      {
+        "id": "rep-008",
+        "type": "report",
+        "question": "用户 1008 在 2026-11 的清洁效率和耗材情况怎么样？",
+        "user_id": "1008",
+        "month": "2026-11",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 100㎡三居\n- 家庭结构: 三口之家\n- 地面材质: 大理石\n\n## 二、清洁效率\n- 覆盖率: 89%\n- 日均清扫面积: 记录未提供\n- 漏扫: 餐桌区域漏扫 0次/天\n- 拖地效果: 无水痕\n\n## 三、耗材状态\n- 主刷寿命: 剩余45天\n- 边刷: 记录未提供\n- 滤网: 记录未提供\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n- 集尘袋: 记录未提供\n- 基站清洁盘: 每两周清理\n\n## 四、环比变化\n- 覆盖率: +1%\n- 低水量档+定期清理清洁盘稳定运行\n\n## 五、保养建议\n1. 继续保持每两周清理基站清洁盘，以维持良好的清洁效果。\n2. 注意主刷的剩余寿命为45天，建议提前准备更换新的主刷。\n3. 定期检查其他耗材如边刷、滤网、尘盒等的状态，确保它们处于良好工作状态。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1008",
+              "month": "2026-11"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "100㎡三居",
+                  "anchors": [
+                    "100㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "三口之家",
+                  "anchors": [
+                    "三口之家"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "大理石",
+                  "anchors": [
+                    "大理石"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:89%",
+                  "anchors": [
+                    "覆盖率",
+                    "89%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "餐桌区域漏扫:0次/天",
+                  "anchors": [
+                    "餐桌区域漏扫",
+                    "0次/天"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "拖地水痕:无",
+                  "anchors": [
+                    "拖地水痕",
+                    "无"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "主刷寿命:剩余45天",
+                  "anchors": [
+                    "主刷寿命",
+                    "剩余45天"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "基站清洁盘:每两周清理",
+                  "anchors": [
+                    "基站清洁盘",
+                    "每两周清理"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率+1%",
+                  "anchors": [
+                    "覆盖率",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "低水量档+定期清理清洁盘稳定运行",
+                  "anchors": [
+                    "低水量档+定期清理清洁盘稳定运行"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 1,
+          "advice": 1,
+          "reason": "报告中提到的边刷、滤网等信息在原始记录中未提供，但建议相关。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 7330.37,
+        "judge_latency_ms": 1488.24,
+        "error": ""
+      },
+      {
+        "id": "rep-009",
+        "type": "report",
+        "question": "分析用户 1009 在 2026-07 的使用报告，和上月相比有哪些变化？",
+        "user_id": "1009",
+        "month": "2026-07",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型：80㎡两居\n- 家庭结构：养宠\n- 地面材质：仿实木\n\n## 二、清洁效率\n- 宠物毛发清理：86%\n- 自动回充成功率：93%\n\n## 三、耗材状态\n- 滤网：已更换（新）\n- 边刷磨损：轻度\n\n## 四、环比变化\n- 宠物毛发清理率提升1%\n- 自动回充成功率提升1%\n- 滤网更换完成\n\n## 五、保养建议\n1. 继续关注边刷的磨损情况，虽然目前仅为轻度磨损，但建议每月检查一次，确保清扫效果。\n2. 保持滤网定期更换的习惯，以维持良好的吸尘效果。记录显示本月已经更换了滤网，继续保持此频率。\n3. 鉴于宠物毛发清理效率有所提高，可以考虑适当增加每日清扫次数，进一步减少家中毛发堆积。\n4. 注意自动回充路径上是否有障碍物变动，尽管回充成功率较高，但任何小的改变都可能影响到这一过程。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1009",
+              "month": "2026-07"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "80㎡两居",
+                  "anchors": [
+                    "80㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "养宠",
+                  "anchors": [
+                    "养宠"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "仿实木",
+                  "anchors": [
+                    "仿实木"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "宠物毛发清理:86%",
+                  "anchors": [
+                    "宠物毛发清理",
+                    "86%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "自动回充成功率:93%",
+                  "anchors": [
+                    "自动回充成功率",
+                    "93%"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "滤网已更换（新）",
+                  "anchors": [
+                    "滤网已更换（新）"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "边刷磨损:轻度",
+                  "anchors": [
+                    "边刷磨损",
+                    "轻度"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "毛发清理+1%",
+                  "anchors": [
+                    "毛发清理",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "回充+1%",
+                  "anchors": [
+                    "回充",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "滤网更换完成",
+                  "anchors": [
+                    "滤网更换完成"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实地反映了原始记录，且提供了具体可执行的保养建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 6496.18,
+        "judge_latency_ms": 1420.95,
+        "error": ""
+      },
+      {
+        "id": "rep-010",
+        "type": "report",
+        "question": "帮我看看用户 1010 在 2026-09 的使用报告，主要问题和对比变化是什么？",
+        "user_id": "1010",
+        "month": "2026-09",
+        "expected_fields": [
+          "特征",
+          "清洁效率",
+          "耗材",
+          "对比"
+        ],
+        "answer": "# 智扫通扫地机器人使用情况报告与保养建议\n\n## 一、用户特征\n- 面积/户型: 130㎡四居\n- 家庭结构: 三代同堂\n- 地面材质: 通体砖\n\n## 二、清洁效率\n- 覆盖率: 84%\n- 手动辅助清扫: 1次/天\n\n## 三、耗材状态\n- 滤网: 已更换（新）\n- 集尘袋消耗: 1.3个月/个\n- 主刷: 记录未提供\n- 边刷: 记录未提供\n- 尘盒: 记录未提供\n- 拖布: 记录未提供\n\n## 四、环比变化\n- 覆盖率: +1%\n- 手动辅助清扫: -1次/天\n- 分区定时: 生效\n\n## 五、保养建议\n1. **定期检查主刷和边刷**：由于记录中未提供主刷和边刷的状态，建议每月至少检查一次，清理缠绕的毛发和杂物，确保清洁效果。\n2. **及时清空尘盒**：虽然记录未提供尘盒的具体状态，但建议每次使用后都检查并清空尘盒，避免影响下一次的清洁效果。\n3. **关注拖布状况**：记录未提供拖布的状态，建议每周检查拖布是否需要清洗或更换，以保证拖地功能的有效性。\n4. **持续监控滤网状态**：滤网已更换为新的，但仍需定期检查，确保其保持良好状态，防止灰尘二次污染。",
+        "tool_calls": [
+          {
+            "name": "fetch_external_data",
+            "args": {
+              "user_id": "1010",
+              "month": "2026-09"
+            }
+          }
+        ],
+        "route": "report_pipeline",
+        "pipeline_ok": true,
+        "fetch_args_ok": true,
+        "facts": {
+          "fields": {
+            "特征": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "130㎡四居",
+                  "anchors": [
+                    "130㎡"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "三代同堂",
+                  "anchors": [
+                    "三代同堂"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "通体砖",
+                  "anchors": [
+                    "通体砖"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "清洁效率": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率:84%",
+                  "anchors": [
+                    "覆盖率",
+                    "84%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "手动辅助清扫:1次/天",
+                  "anchors": [
+                    "手动辅助清扫",
+                    "1次/天"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "耗材": {
+              "matched": 2,
+              "total": 2,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "滤网已更换（新）",
+                  "anchors": [
+                    "滤网已更换（新）"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "集尘袋消耗:1.3个月/个",
+                  "anchors": [
+                    "集尘袋消耗",
+                    "1.3个月/个"
+                  ],
+                  "matched": true
+                }
+              ]
+            },
+            "对比": {
+              "matched": 3,
+              "total": 3,
+              "covered": true,
+              "facts": [
+                {
+                  "fact": "覆盖率+1%",
+                  "anchors": [
+                    "覆盖率",
+                    "+1%"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "手动辅助-1次/天",
+                  "anchors": [
+                    "手动辅助",
+                    "-1次"
+                  ],
+                  "matched": true
+                },
+                {
+                  "fact": "分区定时生效",
+                  "anchors": [
+                    "分区定时生效"
+                  ],
+                  "matched": true
+                }
+              ]
+            }
+          },
+          "field_coverage": 1.0,
+          "fact_coverage": 1.0,
+          "complete": true
+        },
+        "verdict": {
+          "faithfulness": 2,
+          "advice": 1,
+          "reason": "报告忠实于原始记录，且提供了基于现有信息的可执行建议。",
+          "error": ""
+        },
+        "passed": true,
+        "gen_latency_ms": 8962.28,
+        "judge_latency_ms": 1249.47,
+        "error": ""
+      }
+    ]
+  }
+}
