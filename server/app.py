@@ -1,4 +1,4 @@
-"""FastAPI 入口：对话 SSE、会话历史、trace 与用量查询。
+"""FastAPI 入口：对话 SSE、会话列表/历史、trace 与用量查询。
 
 启动阶段才构造 ReactAgent（向量库/模型），导入 app 本身不触发知识库加载；
 启动失败不直接崩溃，而是让 /health 返回可读错误，便于页面提示（P4）。
@@ -99,6 +99,18 @@ def create_app(
             logger.error(f"[server] 读取会话 {thread_id} 失败", exc_info=True)
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         return {"thread_id": thread_id, "messages": messages}
+
+    @app.get("/sessions")
+    def sessions(limit: int = Query(default=20, ge=1, le=50)):
+        current = getattr(app.state, "runner", None)
+        if current is None:
+            raise HTTPException(status_code=503, detail="Agent 尚未初始化")
+        try:
+            items = current.agent.list_sessions(limit=limit)
+        except Exception as exc:
+            logger.error("[server] 读取会话列表失败", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        return {"sessions": items}
 
     @app.post("/chat/stream")
     def chat_stream(payload: ChatRequest):

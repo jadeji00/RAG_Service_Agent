@@ -9,6 +9,13 @@ from langgraph.checkpoint.memory import InMemorySaver
 from agent.guardrails import new_guard_state
 from agent.report_pipeline import generate_report, stream_report
 from agent.scope_router import OUT_OF_SCOPE_ANSWER, route_intent
+from agent.session_index import (
+    checkpoint_time_ms,
+    count_turns,
+    iso_from_ms,
+    list_checkpoint_threads,
+    make_title,
+)
 from agent.tools.agent_tools import (
     ensure_rag_ready,
     fetch_external_data,
@@ -56,6 +63,7 @@ class ReactAgent:
         # 启动自检：空向量库自动重建，避免“md5 台账说做过、实际库是空的”。
         ensure_rag_ready()
 
+        self._checkpoint_db_path = None
         self.checkpointer, self._checkpointer_conn = self._build_checkpointer()
         self.agent = create_agent(
             model=self._build_stream_model(),
@@ -93,6 +101,7 @@ class ReactAgent:
         conn = sqlite3.connect(db_path, check_same_thread=False)
         checkpointer = SqliteSaver(conn)
         checkpointer.setup()
+        self._checkpoint_db_path = db_path
         logger.info(f"[记忆] 使用 SQLite checkpointer：{db_path}")
         return checkpointer, conn
 
@@ -297,6 +306,42 @@ class ReactAgent:
             history.append({"role": role, "content": content.strip()})
 
         return history
+
+    def list_sessions(self, limit: int = 20) -> list[dict]:
+        """列出可恢复的历史会话，供侧栏展示。
+
+        只认两个前端生成的 32 位 hex 线程，标题取该线程的第一条用户消息，
+        按最后写入顺序返回；没有用户消息的线程（例如只写了工具状态）跳过。
+        """
+        limit = max(1, min(int(limit), 50))
+        db_path = getattr(self, "_checkpoint_db_path", None)
+        if not db_path or not os.path.exists(db_path):
+            return []
+        try:
+            threads = list_checkpoint_threads(db_path)
+        except Exception as e:
+            logger.warning(f"[记忆] 读取会话列表失败：{e}")
+            return []
+
+        sessions = []
+        for item in threads:
+            if len(sessions) >= limit:
+                break
+            history = self.load_history(item["thread_id"])
+            title = make_title(history)
+            if not title:
+                continue
+            sessions.append(
+                {
+                    "thread_id": item["thread_id"],
+                    "title": title,
+                    "turns": count_turns(history),
+                    "updated_at": iso_from_ms(
+                        checkpoint_time_ms(item.get("last_checkpoint"))
+                    ),
+                }
+            )
+        return sessions
 
 
 if __name__ == '__main__':

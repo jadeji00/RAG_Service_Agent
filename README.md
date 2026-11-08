@@ -5,9 +5,9 @@
 ## 功能
 
 - **知识库问答**：自动把 `data/` 下的 TXT（可配置扩展 PDF）切片、向量化，存入 Chroma；回答前检索最相关的 3 个片段。
-- **多轮对话**：LangGraph checkpointer 把会话写入 SQLite，按 `thread_id` 隔离；刷新页面可恢复同一段对话。
+- **多轮对话**：LangGraph checkpointer 把会话写入 SQLite，按 `thread_id` 隔离；侧栏列出历史会话（标题取首个问题），点击即可切换，刷新页面也能恢复。
 - **报告生成**：规则路由识别报告意图后走确定性流程——解析用户 ID/月份、直接取数、把记录注入报告提示词，模型只负责一次写作；不依赖模型是否记得调用标记工具。
-- **流式 HTTP 服务**：FastAPI + SSE，按 token 推送回答，同时推送路由、工具开始/结束、错误与最终统计；自带单文件前端。
+- **流式 HTTP 服务**：FastAPI + SSE，按 token 推送回答，同时推送路由、工具开始/结束、错误与最终统计；自带单文件前端，支持会话切换与用量查看。
 - **工具护栏**：调用前校验参数、限制单轮工具预算、拦截重复成功调用、失败最多重试一次；连续拦截后强制模型收口回答。
 - **越界路由**：编程、翻译、医疗、投资、订票等请求直接走确定性拒答，不调用模型，也不消耗 token。
 - **trace 与 token 账本**：每次请求落一条 trace，记录路由、工具、首 token、端到端延迟、token 用量与按配置单价估算的成本，可按天/路由查询。
@@ -25,7 +25,7 @@ AI_RAG_Agent/
 │  ├─ sse.py               # SSE 编码
 │  └─ static/index.html    # 单文件前端
 ├─ agent/
-│  ├─ react_agent.py       # Agent 组装、路由、流式事件、会话历史
+│  ├─ react_agent.py       # Agent 组装、路由、流式事件、会话列表/历史
 │  ├─ report_router.py     # 报告意图识别 + 用户 ID/月份抽取（纯函数）
 │  ├─ report_pipeline.py   # 确定性报告流程：解析 → 取数 → 单次写作
 │  ├─ scope_router.py      # 报告/越界/问答三路确定性路由
@@ -119,6 +119,7 @@ python -m agent.react_agent
 |---|---|---|
 | GET | `/health` | 服务与模型状态；未就绪返回 503 |
 | POST | `/chat/stream` | 请求体 `{"query": "...", "thread_id": "..."}`，返回 SSE |
+| GET | `/sessions?limit=20` | 历史会话列表；标题取首个问题（限 1–50） |
 | GET | `/history/{thread_id}` | 还原某个会话的历史消息 |
 | GET | `/traces?limit=20` | 最近 trace 列表（限 1–100） |
 | GET | `/trace/{trace_id}` | 单条 trace + spans；不存在返回 404 |
@@ -135,7 +136,7 @@ python -m agent.react_agent
 | `done` | `answer`, `latency_ms`, `first_token_ms`, `usage`, `cost_cny`, `tool_calls` | 正常结束与统计 |
 | `error` | `code`, `message`, `trace_id` | 失败，对外只给通用提示 |
 
-前端用 `fetch` + `ReadableStream` 解析 SSE，支持停止生成、新会话、历史恢复，右侧展示近 7 天用量与最近 trace。
+前端用 `fetch` + `ReadableStream` 解析 SSE，支持停止生成、新会话、历史恢复；右侧列出最近会话（标题取首个问题），点击可直接切换，近 7 天用量与单条 trace 入口分别保留在侧栏和每条回答底部。
 
 ## 数据与配置
 

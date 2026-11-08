@@ -48,6 +48,23 @@ class FakeAgent:
     def load_history(self, thread_id):
         return [{"role": "user", "content": f"history-{thread_id}"}]
 
+    def list_sessions(self, limit=20):
+        items = [
+            {
+                "thread_id": "a" * 32,
+                "title": "拖布多久清洗一次？",
+                "turns": 2,
+                "updated_at": "2026-11-08T12:00:00.000+00:00",
+            },
+            {
+                "thread_id": "b" * 32,
+                "title": "滤网怎么更换？",
+                "turns": 1,
+                "updated_at": "2026-11-07T12:00:00.000+00:00",
+            },
+        ]
+        return items[:limit]
+
 
 def parse_sse(text: str) -> list[tuple[str, dict]]:
     events = []
@@ -104,6 +121,15 @@ class ApiTest(unittest.TestCase):
         response = self.client.post("/chat/stream", json={"query": ""})
         self.assertEqual(response.status_code, 422)
 
+    def test_sessions_endpoint_lists_and_validates_limit(self):
+        response = self.client.get("/sessions?limit=1")
+        self.assertEqual(response.status_code, 200)
+        items = response.json()["sessions"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["title"], "拖布多久清洗一次？")
+        self.assertEqual(self.client.get("/sessions?limit=0").status_code, 422)
+        self.assertEqual(self.client.get("/sessions?limit=51").status_code, 422)
+
     def test_history_and_trace_endpoints(self):
         response = self.client.post(
             "/chat/stream", json={"query": "你好", "thread_id": "api-2"}
@@ -143,6 +169,9 @@ class ApiTest(unittest.TestCase):
         events = parse_sse(response.text)
         self.assertEqual(events[0][0], "error")
         self.assertEqual(events[0][1]["code"], "not_ready")
+
+        sessions = self.client.get("/sessions")
+        self.assertEqual(sessions.status_code, 503)
 
     def test_index_served(self):
         response = self.client.get("/")

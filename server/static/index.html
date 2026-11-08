@@ -264,11 +264,31 @@
       color: var(--muted); font-weight: 600;
     }
     .card .label span { font-size: 10.5px; color: var(--faint); }
-    .session-id {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px; color: var(--accent-ink);
+    .session-list {
+      display: flex; flex-direction: column; gap: 5px;
+      max-height: 42vh; overflow-y: auto; padding-right: 2px;
+    }
+    .session-list::-webkit-scrollbar { width: 5px; }
+    .session-list::-webkit-scrollbar-thumb { background: #ded7c9; border-radius: 8px; }
+    .session-item {
+      display: block; width: 100%; text-align: left;
+      padding: 8px 10px; border-radius: 10px;
+      border: 1px solid transparent; background: transparent;
+      color: var(--muted);
+      transition: border-color .15s, background .15s, color .15s;
+    }
+    .session-item:hover { border-color: #d8d0c1; background: #faf7ef; }
+    .session-item.active { border-color: #cfe0d8; background: var(--accent-soft); color: var(--accent-ink); }
+    .session-item:disabled { opacity: .55; cursor: not-allowed; }
+    .session-item .title {
+      display: block; font-size: 12.5px; line-height: 1.45;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
+    .session-item .meta {
+      display: block; margin-top: 2px; font-size: 10.5px; color: var(--faint);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .session-item.active .meta { color: #5b7d73; }
     .ghost {
       width: 100%; margin-top: 10px; padding: 9px 12px;
       border: 1px solid var(--line); border-radius: 10px;
@@ -279,24 +299,9 @@
     .metric + .metric { border-top: 1px solid #efe9dc; }
     .metric span:first-child { color: var(--muted); }
     .metric span:last-child { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink); }
-    .trace-list { display: flex; flex-direction: column; gap: 7px; }
-    .trace-item {
-      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
-      padding: 8px 9px; border-radius: 10px; border: 1px solid transparent;
-      background: #faf7ef; cursor: pointer;
-    }
-    .trace-item:hover { border-color: #d8d0c1; }
-    .trace-item .route {
-      font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
-      color: var(--accent-ink); background: var(--accent-soft);
-      border-radius: 999px; padding: 2px 7px;
-    }
-    .trace-item .q {
-      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      font-size: 11.5px; color: var(--muted);
-    }
-    .trace-item .ms { font-size: 10.5px; color: var(--faint); font-family: ui-monospace, monospace; }
     .empty { color: var(--faint); font-size: 12px; line-height: 1.7; }
+    .stats a { color: var(--accent); text-decoration: none; }
+    .stats a:hover { text-decoration: underline; }
     .banner {
       display: none; margin-bottom: 12px; padding: 10px 13px;
       border: 1px solid #e4c4bd; background: var(--danger-soft); color: var(--danger);
@@ -373,8 +378,8 @@
 
       <aside class="side" aria-label="会话与观测">
         <section class="card">
-          <div class="label"><h2>会话 / Session</h2><span>SQLite</span></div>
-          <div class="session-id" id="session-id">—</div>
+          <div class="label"><h2>会话 / Sessions</h2><span id="session-count">—</span></div>
+          <div class="session-list" id="session-list"><div class="empty">加载中…</div></div>
           <button class="ghost" id="new-session" type="button">开启新会话 · New session</button>
         </section>
 
@@ -384,11 +389,6 @@
           <div class="metric"><span>Token 总量</span><span id="usage-tokens">—</span></div>
           <div class="metric"><span>估算成本 · cost</span><span id="usage-cost">—</span></div>
           <div class="metric"><span>平均耗时 · avg</span><span id="usage-latency">—</span></div>
-        </section>
-
-        <section class="card">
-          <div class="label"><h2>最近 trace</h2><span>点击查看</span></div>
-          <div class="trace-list" id="trace-list"><div class="empty">还没有请求记录。</div></div>
         </section>
 
         <section class="card">
@@ -414,12 +414,12 @@
       status: document.getElementById('status'),
       statusText: document.getElementById('status-text'),
       banner: document.getElementById('banner'),
-      sessionId: document.getElementById('session-id'),
+      sessionList: document.getElementById('session-list'),
+      sessionCount: document.getElementById('session-count'),
       usageRequests: document.getElementById('usage-requests'),
       usageTokens: document.getElementById('usage-tokens'),
       usageCost: document.getElementById('usage-cost'),
       usageLatency: document.getElementById('usage-latency'),
-      traceList: document.getElementById('trace-list'),
       charCount: document.getElementById('char-count'),
       examples: document.getElementById('examples'),
       welcome: document.getElementById('welcome'),
@@ -429,12 +429,13 @@
     if (!threadId) threadId = newThreadId();
     localStorage.setItem('robocare_thread', threadId);
     updateUrl();
-    els.sessionId.textContent = threadId;
 
     let controller = null;
     let streaming = false;
     let lastAssistant = null;
     let lastRaw = '';
+    let sessions = [];
+    let historySeq = 0;
 
     function newThreadId() {
       if (crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '');
@@ -513,6 +514,92 @@
       streaming = busy;
       els.send.disabled = busy;
       els.stop.classList.toggle('show', busy);
+      els.sessionList.querySelectorAll('.session-item').forEach((item) => {
+        item.disabled = busy;
+      });
+    }
+    function relativeTime(iso) {
+      if (!iso) return '';
+      const time = new Date(iso).getTime();
+      if (Number.isNaN(time)) return '';
+      const diff = Math.max(0, Date.now() - time);
+      const minute = 60000, hour = 3600000, day = 86400000;
+      if (diff < minute) return '刚刚';
+      if (diff < hour) return `${Math.floor(diff / minute)} 分钟前`;
+      if (diff < day) return `${Math.floor(diff / hour)} 小时前`;
+      if (diff < day * 2) return '昨天';
+      const date = new Date(time);
+      return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+    function sessionMeta(item) {
+      const parts = [];
+      const time = relativeTime(item.updated_at);
+      if (time) parts.push(time);
+      if (item.turns) parts.push(`${item.turns} 轮`);
+      return parts.length ? parts.join(' · ') : '未发送';
+    }
+    function renderSessions() {
+      const items = sessions.slice();
+      const currentListed = items.some((item) => item.thread_id === threadId);
+      if (!currentListed) {
+        items.unshift({
+          thread_id: threadId,
+          title: '新会话（未发送）',
+          turns: 0,
+          updated_at: null,
+        });
+      }
+      els.sessionCount.textContent = `${sessions.length}`;
+      if (!items.length) {
+        els.sessionList.innerHTML = '<div class="empty">还没有历史会话，发一句话就会出现在这里。</div>';
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      for (const item of items) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'session-item' + (item.thread_id === threadId ? ' active' : '');
+        button.title = `${item.title || '未命名会话'}\n${item.thread_id}`;
+        button.disabled = streaming;
+        button.innerHTML = `
+          <span class="title">${escapeHtml(item.title || '未命名会话')}</span>
+          <span class="meta">${escapeHtml(sessionMeta(item))}</span>`;
+        button.addEventListener('click', () => selectSession(item.thread_id));
+        fragment.appendChild(button);
+      }
+      els.sessionList.innerHTML = '';
+      els.sessionList.appendChild(fragment);
+    }
+    function resetWelcome(text) {
+      els.messages.innerHTML = '';
+      const welcome = document.createElement('div');
+      welcome.className = 'msg assistant';
+      const bubble = text
+        ? `<p>${escapeHtml(text)}</p>`
+        : `<p>你好，我是扫地 / 扫拖机器人客服。可以问我选购、使用、维护和故障排查，也可以生成个人使用报告。</p>
+           <p style="color:var(--muted);font-size:13px;">回答会经过检索与评测；报告由确定性流程取数。超出服务范围的请求会直接说明。</p>`;
+      welcome.innerHTML = `
+        <div class="avatar">AI</div>
+        <div class="content">
+          <div class="role">Assistant</div>
+          <div class="bubble">${bubble}</div>
+        </div>`;
+      els.messages.appendChild(welcome);
+      els.welcome = welcome;
+    }
+    function selectSession(id) {
+      if (streaming || id === threadId) return;
+      threadId = id;
+      localStorage.setItem('robocare_thread', threadId);
+      updateUrl();
+      lastRaw = '';
+      lastAssistant = null;
+      hideBanner();
+      hideThinking();
+      els.messages.innerHTML = '';
+      els.welcome = null;
+      renderSessions();
+      loadHistory();
     }
     function addUser(text) {
       const row = document.createElement('div');
@@ -569,13 +656,17 @@
       const tokens = usage.total_tokens || 0;
       const cost = data.cost_cny == null ? '—' : `¥${Number(data.cost_cny).toFixed(4)}`;
       const first = data.first_token_ms == null ? '—' : `${formatMs(data.first_token_ms)} 首字`;
+      const trace = data.trace_id
+        ? `<a href="/trace/${encodeURIComponent(data.trace_id)}" target="_blank" rel="noopener"
+              title="查看 trace ${escapeHtml(data.trace_id)}">trace ${escapeHtml(data.trace_id.slice(0, 8))}</a>`
+        : '';
       stats.innerHTML = `
         <span class="pill">${escapeHtml(route)}</span>
         <span>${formatMs(data.latency_ms)} 总耗时</span>
         <span>${first}</span>
         <span>${tokens ? tokens.toLocaleString() + ' tokens' : '未调用模型'}</span>
         <span>${cost}</span>
-        <span title="${escapeHtml(data.trace_id || '')}">trace ${escapeHtml((data.trace_id || '').slice(0, 8))}</span>`;
+        <span>${trace}</span>`;
     }
     function formatMs(ms) {
       if (ms == null) return '—';
@@ -627,14 +718,14 @@
         setBusy(false);
         scrollToBottom();
         refreshUsage();
-        refreshTraces();
+        refreshSessions();
         return;
       }
       if (event === 'error') {
         addNotice(row, data.message || '服务暂时不可用');
         hideThinking();
         setBusy(false);
-        refreshTraces();
+        refreshSessions();
       }
     }
 
@@ -690,7 +781,7 @@
         }
         setBusy(false);
         hideThinking();
-        refreshTraces();
+        refreshSessions();
       } finally {
         controller = null;
       }
@@ -722,39 +813,35 @@
       } catch (e) { /* 观测接口失败不影响对话 */ }
     }
 
-    async function refreshTraces() {
+    async function refreshSessions() {
       try {
-        const response = await fetch('/traces?limit=5');
+        const response = await fetch('/sessions?limit=20');
         if (!response.ok) return;
         const data = await response.json();
-        const items = data.traces || [];
-        if (!items.length) {
-          els.traceList.innerHTML = '<div class="empty">还没有请求记录。</div>';
-          return;
-        }
-        els.traceList.innerHTML = '';
-        for (const item of items) {
-          const div = document.createElement('div');
-          div.className = 'trace-item';
-          div.title = `点击查看 trace ${item.trace_id}`;
-          div.innerHTML = `
-            <span class="route">${escapeHtml(item.route || 'qa')}</span>
-            <span class="q">${escapeHtml(item.question || '')}</span>
-            <span class="ms">${formatMs(item.latency_ms)}</span>`;
-          div.addEventListener('click', () => window.open(`/trace/${encodeURIComponent(item.trace_id)}`, '_blank'));
-          els.traceList.appendChild(div);
-        }
-      } catch (e) { /* ignore */ }
+        sessions = Array.isArray(data.sessions) ? data.sessions : [];
+      } catch (e) {
+        return;
+      }
+      renderSessions();
     }
 
     async function loadHistory() {
+      const seq = ++historySeq;
       try {
         const response = await fetch(`/history/${encodeURIComponent(threadId)}`);
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (seq === historySeq) resetWelcome('会话加载失败，请稍后重试。');
+          return;
+        }
         const data = await response.json();
+        if (seq !== historySeq) return;
         const messages = data.messages || [];
-        if (!messages.length) return;
-        if (els.welcome) { els.welcome.remove(); els.welcome = null; }
+        if (!messages.length) {
+          resetWelcome();
+          return;
+        }
+        els.messages.innerHTML = '';
+        els.welcome = null;
         for (const message of messages) {
           if (message.role === 'user') {
             addUser(message.content);
@@ -764,7 +851,9 @@
           }
         }
         scrollToBottom(true);
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        if (seq === historySeq) resetWelcome('会话加载失败，请稍后重试。');
+      }
     }
 
     async function checkHealth() {
@@ -808,24 +897,19 @@
       threadId = newThreadId();
       localStorage.setItem('robocare_thread', threadId);
       updateUrl();
-      els.sessionId.textContent = threadId;
-      els.messages.innerHTML = '';
-      const welcome = document.createElement('div');
-      welcome.className = 'msg assistant';
-      welcome.innerHTML = `
-        <div class="avatar">AI</div>
-        <div class="content">
-          <div class="role">Assistant</div>
-          <div class="bubble"><p>新会话已开始。可以问我扫地 / 扫拖机器人的选购、使用、维护和故障排查。</p></div>
-        </div>`;
-      els.messages.appendChild(welcome);
+      historySeq += 1;
+      lastRaw = '';
+      lastAssistant = null;
       hideBanner();
       hideThinking();
+      resetWelcome();
+      renderSessions();
     });
 
     checkHealth();
     refreshUsage();
-    refreshTraces();
+    renderSessions();
+    refreshSessions();
     loadHistory();
   </script>
 </body>
