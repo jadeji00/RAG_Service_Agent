@@ -6,6 +6,7 @@ from pathlib import Path
 from agent.session_index import (
     checkpoint_time_ms,
     count_turns,
+    delete_checkpoint_thread,
     is_session_thread,
     iso_from_ms,
     list_checkpoint_threads,
@@ -55,6 +56,61 @@ class SessionIndexTest(unittest.TestCase):
         self.assertEqual([item["thread_id"] for item in items], ["a" * 32, "b" * 32])
         self.assertEqual(items[0]["last_checkpoint"], "id-3")
         self.assertEqual(items[0]["checkpoints"], 2)
+
+    def test_delete_checkpoint_thread_removes_only_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "checkpoints.sqlite3"
+            conn = sqlite3.connect(db)
+            conn.execute(
+                "CREATE TABLE checkpoints (thread_id TEXT, checkpoint_id TEXT)"
+            )
+            conn.execute(
+                "CREATE TABLE writes (thread_id TEXT, checkpoint_id TEXT, task_id TEXT)"
+            )
+            conn.executemany(
+                "INSERT INTO checkpoints (thread_id, checkpoint_id) VALUES (?, ?)",
+                [("a" * 32, "cp-1"), ("a" * 32, "cp-2"), ("b" * 32, "cp-3")],
+            )
+            conn.executemany(
+                "INSERT INTO writes (thread_id, checkpoint_id, task_id) VALUES (?, ?, ?)",
+                [("a" * 32, "cp-1", "t-1"), ("b" * 32, "cp-3", "t-2")],
+            )
+            conn.commit()
+            conn.close()
+
+            deleted = delete_checkpoint_thread(str(db), "a" * 32)
+
+            conn = sqlite3.connect(db)
+            checkpoint_ids = [
+                row[0]
+                for row in conn.execute(
+                    "SELECT checkpoint_id FROM checkpoints ORDER BY checkpoint_id"
+                )
+            ]
+            write_threads = [
+                row[0] for row in conn.execute("SELECT thread_id FROM writes")
+            ]
+            conn.close()
+
+        self.assertEqual(deleted, {"checkpoints": 2, "writes": 1})
+        self.assertEqual(checkpoint_ids, ["cp-3"])
+        self.assertEqual(write_threads, ["b" * 32])
+
+    def test_delete_checkpoint_thread_skips_missing_writes_table(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "checkpoints.sqlite3"
+            conn = sqlite3.connect(db)
+            conn.execute("CREATE TABLE checkpoints (thread_id TEXT, checkpoint_id TEXT)")
+            conn.execute(
+                "INSERT INTO checkpoints (thread_id, checkpoint_id) VALUES (?, ?)",
+                ("a" * 32, "cp-1"),
+            )
+            conn.commit()
+            conn.close()
+
+            deleted = delete_checkpoint_thread(str(db), "a" * 32)
+
+        self.assertEqual(deleted, {"checkpoints": 1, "writes": 0})
 
     def test_title_uses_first_user_message_and_truncates(self):
         messages = [

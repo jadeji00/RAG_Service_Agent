@@ -226,6 +226,21 @@ class TraceStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def delete_thread(self, thread_id: str) -> dict[str, int]:
+        """删除某个会话的全部 trace 与 span；返回删除行数。"""
+        with self._db() as conn:
+            spans = conn.execute(
+                """
+                DELETE FROM spans
+                WHERE trace_id IN (SELECT trace_id FROM traces WHERE thread_id = ?)
+                """,
+                (thread_id,),
+            ).rowcount
+            traces = conn.execute(
+                "DELETE FROM traces WHERE thread_id = ?", (thread_id,)
+            ).rowcount
+        return {"traces": traces, "spans": spans}
+
     def usage_summary(self, days: int = 7) -> dict:
         days = max(1, int(days))
         since = (

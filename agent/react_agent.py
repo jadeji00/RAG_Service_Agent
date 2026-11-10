@@ -12,6 +12,8 @@ from agent.scope_router import OUT_OF_SCOPE_ANSWER, route_intent
 from agent.session_index import (
     checkpoint_time_ms,
     count_turns,
+    delete_checkpoint_thread,
+    is_session_thread,
     iso_from_ms,
     list_checkpoint_threads,
     make_title,
@@ -342,6 +344,19 @@ class ReactAgent:
                 }
             )
         return sessions
+
+    def delete_session(self, thread_id: str) -> dict[str, int]:
+        """删除一个历史会话的 checkpoint 与 writes。
+
+        只接受前端生成的 32 位 hex 线程，避免误删评测/调试线程；
+        trace 由服务层根据同一个 ``thread_id`` 一并清理。
+        """
+        if not is_session_thread(thread_id):
+            raise ValueError("无效的会话 ID")
+        db_path = getattr(self, "_checkpoint_db_path", None)
+        if not db_path or not os.path.exists(db_path):
+            return {"checkpoints": 0, "writes": 0}
+        return delete_checkpoint_thread(db_path, thread_id)
 
 
 if __name__ == '__main__':

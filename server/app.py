@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from agent.session_index import is_session_thread
 from observability.store import TraceStore
 from server.chat_runner import ChatRunner
 from server.sse import encode_sse
@@ -111,6 +112,37 @@ def create_app(
             logger.error("[server] 读取会话列表失败", exc_info=True)
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         return {"sessions": items}
+
+    @app.delete("/sessions/{thread_id}")
+    def delete_session(thread_id: str):
+        if not is_session_thread(thread_id):
+            raise HTTPException(status_code=422, detail="无效的会话 ID")
+        current = getattr(app.state, "runner", None)
+        if current is None:
+            raise HTTPException(status_code=503, detail="Agent 尚未初始化")
+
+        # 先删不可见的 trace，再删可见的 checkpoint：后者失败时会话仍在列表里，
+        # 重试即可；反过来会出现「列表没了、usage 还在」的脏状态。
+        try:
+            traces = trace_store.delete_thread(thread_id)
+        except Exception as exc:
+            logger.error(f"[server] 清理会话 {thread_id} 的 trace 失败", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+        try:
+            checkpoints = current.agent.delete_session(thread_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.error(f"[server] 删除会话 {thread_id} 失败", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+        deleted = {**checkpoints, **traces}
+        if not deleted.get("checkpoints") and not deleted.get("traces"):
+            raise HTTPException(status_code=404, detail="会话不存在")
+
+        logger.info(f"[server] 已删除会话 {thread_id}：{deleted}")
+        return {"thread_id": thread_id, "deleted": deleted}
 
     @app.post("/chat/stream")
     def chat_stream(payload: ChatRequest):

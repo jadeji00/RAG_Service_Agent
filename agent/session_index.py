@@ -94,6 +94,37 @@ def list_checkpoint_threads(db_path: str) -> list[dict]:
     return threads
 
 
+def delete_checkpoint_thread(db_path: str, thread_id: str) -> dict[str, int]:
+    """删除某个线程的全部 checkpoint 与 writes，返回删除行数。
+
+    LangGraph 的 ``writes`` 没有外键级联，必须先删；表不存在时跳过，
+    方便兼容只建了 ``checkpoints`` 的旧库/测试库。
+    """
+    deleted = {"checkpoints": 0, "writes": 0}
+    conn = sqlite3.connect(db_path, timeout=5)
+    try:
+        tables = {
+            str(row[0])
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+        with conn:
+            if "writes" in tables:
+                cursor = conn.execute(
+                    "DELETE FROM writes WHERE thread_id = ?", (thread_id,)
+                )
+                deleted["writes"] = cursor.rowcount
+            if "checkpoints" in tables:
+                cursor = conn.execute(
+                    "DELETE FROM checkpoints WHERE thread_id = ?", (thread_id,)
+                )
+                deleted["checkpoints"] = cursor.rowcount
+    finally:
+        conn.close()
+    return deleted
+
+
 def make_title(messages: list[dict], limit: int = 40) -> str:
     """用第一条用户消息做会话名；折叠换行并截断，不引入模型调用。"""
     for message in messages:
@@ -113,6 +144,7 @@ def count_turns(messages: list[dict]) -> int:
 __all__ = [
     "checkpoint_time_ms",
     "count_turns",
+    "delete_checkpoint_thread",
     "is_session_thread",
     "iso_from_ms",
     "list_checkpoint_threads",

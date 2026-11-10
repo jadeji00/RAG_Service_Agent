@@ -241,9 +241,10 @@
     }
     .session-list::-webkit-scrollbar { width: 5px; }
     .session-list::-webkit-scrollbar-thumb { background: #ded7c9; border-radius: 8px; }
+    .session-row { position: relative; display: flex; align-items: stretch; }
     .session-item {
       display: block; width: 100%; text-align: left;
-      padding: 8px 10px; border-radius: 10px;
+      padding: 8px 30px 8px 10px; border-radius: 10px;
       border: 1px solid transparent; background: transparent;
       color: var(--muted);
       transition: border-color .15s, background .15s, color .15s;
@@ -260,6 +261,22 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
     .session-item.active .meta { color: #5b7d73; }
+    .session-delete {
+      position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+      width: 22px; height: 22px; padding: 0;
+      display: grid; place-items: center;
+      border: 0; border-radius: 7px; background: transparent;
+      color: var(--faint); font-size: 15px; line-height: 1;
+      opacity: 0; pointer-events: none;
+      transition: opacity .15s, background .15s, color .15s;
+    }
+    .session-row:hover .session-delete,
+    .session-row:focus-within .session-delete { opacity: 1; pointer-events: auto; }
+    .session-delete:hover { background: #f6e7e2; color: #a2563f; }
+    .session-delete:disabled { opacity: 0; pointer-events: none; }
+    @media (hover: none) {
+      .session-delete { opacity: .75; pointer-events: auto; }
+    }
     .ghost {
       width: 100%; margin-top: 10px; padding: 9px 12px;
       border: 1px solid var(--line); border-radius: 10px;
@@ -482,7 +499,7 @@
       streaming = busy;
       els.send.disabled = busy;
       els.stop.classList.toggle('show', busy);
-      els.sessionList.querySelectorAll('.session-item').forEach((item) => {
+      els.sessionList.querySelectorAll('.session-item, .session-delete').forEach((item) => {
         item.disabled = busy;
       });
     }
@@ -524,6 +541,10 @@
       }
       const fragment = document.createDocumentFragment();
       for (const item of items) {
+        const listed = sessions.some((session) => session.thread_id === item.thread_id);
+        const row = document.createElement('div');
+        row.className = 'session-row';
+
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'session-item' + (item.thread_id === threadId ? ' active' : '');
@@ -533,7 +554,21 @@
           <span class="title">${escapeHtml(item.title || '未命名会话')}</span>
           <span class="meta">${escapeHtml(sessionMeta(item))}</span>`;
         button.addEventListener('click', () => selectSession(item.thread_id));
-        fragment.appendChild(button);
+        row.appendChild(button);
+
+        if (listed) {
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'session-delete';
+          remove.textContent = '×';
+          remove.title = '删除会话';
+          remove.setAttribute('aria-label', `删除会话：${item.title || '未命名会话'}`);
+          remove.disabled = streaming;
+          remove.addEventListener('click', () => deleteSession(item, row));
+          row.appendChild(remove);
+        }
+
+        fragment.appendChild(row);
       }
       els.sessionList.innerHTML = '';
       els.sessionList.appendChild(fragment);
@@ -742,6 +777,50 @@
       renderSessions();
     }
 
+    function startNewSession() {
+      threadId = newThreadId();
+      localStorage.setItem('robocare_thread', threadId);
+      updateUrl();
+      historySeq += 1;
+      lastRaw = '';
+      hideBanner();
+      hideThinking();
+      resetWelcome();
+      renderSessions();
+    }
+
+    async function deleteSession(item, row) {
+      if (streaming) return;
+      const title = item.title || '这个会话';
+      if (!window.confirm(`删除「${title}」？\n\n会话记录和对应的 trace 会一起删除，无法恢复。`)) {
+        return;
+      }
+
+      const remove = row.querySelector('.session-delete');
+      if (remove) remove.disabled = true;
+      try {
+        const response = await fetch(`/sessions/${encodeURIComponent(item.thread_id)}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok && response.status !== 404) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (e) {
+        if (remove) remove.disabled = false;
+        showBanner('删除会话失败，请稍后重试。');
+        return;
+      }
+
+      sessions = sessions.filter((session) => session.thread_id !== item.thread_id);
+      if (item.thread_id === threadId) {
+        startNewSession();
+      } else {
+        renderSessions();
+      }
+      refreshUsage();
+      refreshSessions();
+    }
+
     async function loadHistory() {
       const seq = ++historySeq;
       try {
@@ -811,15 +890,7 @@
     });
     document.getElementById('new-session').addEventListener('click', () => {
       if (streaming) return;
-      threadId = newThreadId();
-      localStorage.setItem('robocare_thread', threadId);
-      updateUrl();
-      historySeq += 1;
-      lastRaw = '';
-      hideBanner();
-      hideThinking();
-      resetWelcome();
-      renderSessions();
+      startNewSession();
     });
 
     checkHealth();

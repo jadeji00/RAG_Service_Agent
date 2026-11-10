@@ -65,6 +65,11 @@ class FakeAgent:
         ]
         return items[:limit]
 
+    def delete_session(self, thread_id):
+        if thread_id == "a" * 32:
+            return {"checkpoints": 2, "writes": 3}
+        return {"checkpoints": 0, "writes": 0}
+
 
 def parse_sse(text: str) -> list[tuple[str, dict]]:
     events = []
@@ -130,6 +135,23 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(self.client.get("/sessions?limit=0").status_code, 422)
         self.assertEqual(self.client.get("/sessions?limit=51").status_code, 422)
 
+    def test_delete_session_removes_checkpoints_and_traces(self):
+        thread_id = "a" * 32
+        self.store.start_trace("trace-del", thread_id, "要删除的问题", "fake-model")
+        self.store.add_span("trace-del", "tool:rag_summarize", "tool", duration_ms=2.0)
+
+        response = self.client.delete(f"/sessions/{thread_id}")
+        self.assertEqual(response.status_code, 200)
+        deleted = response.json()["deleted"]
+        self.assertEqual(deleted["checkpoints"], 2)
+        self.assertEqual(deleted["writes"], 3)
+        self.assertEqual(deleted["traces"], 1)
+        self.assertEqual(deleted["spans"], 1)
+        self.assertIsNone(self.store.get_trace("trace-del"))
+
+        self.assertEqual(self.client.delete("/sessions/not-a-session").status_code, 422)
+        self.assertEqual(self.client.delete(f"/sessions/{'c' * 32}").status_code, 404)
+
     def test_history_and_trace_endpoints(self):
         response = self.client.post(
             "/chat/stream", json={"query": "你好", "thread_id": "api-2"}
@@ -172,6 +194,9 @@ class ApiTest(unittest.TestCase):
 
         sessions = self.client.get("/sessions")
         self.assertEqual(sessions.status_code, 503)
+
+        deleted = self.client.delete(f"/sessions/{'a' * 32}")
+        self.assertEqual(deleted.status_code, 503)
 
     def test_index_served(self):
         response = self.client.get("/")

@@ -140,6 +140,19 @@ class TraceStoreTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.store.finish_trace("t2", not_a_column=1)
 
+    def test_delete_thread_removes_traces_and_spans(self):
+        self.store.start_trace("t-keep", "thread-keep", "保留", "qwen-max")
+        self.store.start_trace("t-del", "thread-del", "删除", "qwen-max")
+        self.store.add_span("t-del", "tool:rag_summarize", "tool", duration_ms=3.0)
+        self.store.add_span("t-keep", "tool:rag_summarize", "tool", duration_ms=4.0)
+
+        deleted = self.store.delete_thread("thread-del")
+
+        self.assertEqual(deleted, {"traces": 1, "spans": 1})
+        self.assertIsNone(self.store.get_trace("t-del"))
+        self.assertEqual(self.store.get_trace("t-keep")["spans"][0]["duration_ms"], 4.0)
+        self.assertEqual(self.store.delete_thread("thread-del"), {"traces": 0, "spans": 0})
+
     def test_missing_trace_returns_none(self):
         self.assertIsNone(self.store.get_trace("nope"))
 

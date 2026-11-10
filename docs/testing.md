@@ -24,10 +24,10 @@
 | 工具护栏单测 | `tests/test_guardrails.py` | 参数校验、预算、重复成功拦截、失败重试一次、参数规范化 | 否 | 毫秒级 |
 | 越界路由单测 | `tests/test_scope_router.py` | 15 道 easy 负样本、washing-machine 反例、报告优先级 | 否 | 毫秒级 |
 | 中间件单测 | `tests/test_middleware.py` | 报告上下文切换、非法参数前置拦截、连续拦截后强制收口只注入一次 | 否 | 毫秒级 |
-| 观测底座单测 | `tests/test_observability.py` | 用量归一/提取/去重、成本估算、trace/span 落库与查询 | 否 | 毫秒级 |
-| 会话索引单测 | `tests/test_session_index.py` | 线程过滤、UUIDv6 时间解析、首问标题与截断、checkpoint 分组排序 | 否 | 毫秒级 |
+| 观测底座单测 | `tests/test_observability.py` | 用量归一/提取/去重、成本估算、trace/span 落库查询、按会话删除 | 否 | 毫秒级 |
+| 会话索引单测 | `tests/test_session_index.py` | 线程过滤、UUIDv6 时间解析、首问标题与截断、checkpoint 分组排序、按线程删除 | 否 | 毫秒级 |
 | 事件流单测 | `tests/test_chat_runner.py` | SSE 事件序列、trace 落库、错误/取消、缺用量不伪造成本 | 否（fake agent） | 毫秒级 |
-| API 单测 | `tests/test_api.py` | health、chat SSE、会话列表/历史、trace、usage、503 not_ready | 否（fake runner） | 毫秒级 |
+| API 单测 | `tests/test_api.py` | health、chat SSE、会话列表/历史/删除、trace、usage、503 not_ready | 否（fake runner） | 毫秒级 |
 | pass^k 单测 | `tests/test_passk.py` | 严格通过、至少一次、波动题、repeat=1 | 否 | 毫秒级 |
 | 检索端到端 | `eval/run_eval.py` | 真实 embedding + Chroma 的 Recall/MRR/延迟 | 是（仅 embedding） | 约 10 秒 / 套 |
 | 回答级端到端 | `eval/run_answer_eval.py` | easy 55+15+10 或 hard 20+5；correctness / faithfulness / 拒答 / 字段完整性 | 是 | easy 约 5 分钟，hard 约 3 分钟 |
@@ -225,7 +225,7 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
 | 项 | 结果 |
 |---|---|
 | 数据集校验 | `VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`，0 个错误 |
-| 单元测试 | 80 个全部通过，约 0.5 秒（护栏 7、越界 6、观测 7、会话索引 5、事件流 5、API 7，中间件 8） |
+| 单元测试 | 84 个全部通过，约 0.6 秒（护栏 7、越界 6、观测 8、会话索引 7、事件流 5、API 8，中间件 8） |
 | 向量库 | 66 个向量、66 个唯一 ID、66 段唯一内容、5 个来源/md5 组合 |
 | easy 回答级评测 | 80 题全部执行，生成与判分错误 0（确定性拒答上线后的复跑见 5.9） |
 | hard 回答级评测 | 25 题全部执行，生成与判分错误 0 |
@@ -388,7 +388,7 @@ hard 的完全正确率 75.00% 明显低于 easy 的 80.00%，关键词命中率
 - **账本一致**：同一时段 `/usage?days=1` 汇总 3 次请求、4,252 tokens、0.012969 元，与三条 trace 相加一致。
 - `/trace/{id}` 返回路由 span + 工具 span；`/history/{thread}` 能恢复一问一答（报告/拒答经 `update_state` 写回同一 thread）。
 
-测试覆盖：80 个单测全部通过；其中 API/事件流 12 个用 fake runner，不依赖模型与网络。**未测**：真实浏览器交互、断线重连、多用户并发、Streamlit 页面（仅代码路径检查）、护栏在真实模型反复试错下的行为（只在单测里构造拦截状态）。
+测试覆盖：84 个单测全部通过；其中 API/事件流 13 个用 fake runner，不依赖模型与网络。**未测**：真实浏览器交互、断线重连、多用户并发、Streamlit 页面（仅代码路径检查）、护栏在真实模型反复试错下的行为（只在单测里构造拦截状态）。
 
 ### 5.10 M4 确定性拒答后的 easy 复跑
 
@@ -422,13 +422,29 @@ hard 的完全正确率 75.00% 明显低于 easy 的 80.00%，关键词命中率
 | 回答区 | 正文章节之外的 `#trace-list`、`.tool-chip`、`.stats` 数量均为 0；工具与 token 只留后端接口 |
 | 未测 | 宽屏视觉效果（in-app 浏览器无可视视口，只做了 DOM 断言）、快速连续切换的竞态、几十条会话的滚动性能 |
 
+### 5.12 删除历史会话
+
+2026-11-10 验证「侧栏悬停删除 + 二次确认 + checkpoint/trace 同步清理」：
+
+| 项 | 结果 |
+|---|---|
+| 自动测试 | 84 个单测全部通过；新增会话索引删除 2 个、trace 删除 1 个、`DELETE /sessions/{id}` 1 个 |
+| 接口删除 | 临时会话返回 `{"checkpoints":1,"writes":0,"traces":1,"spans":1}`；之后 `/sessions` 不再返回该线程，`/trace/{id}` 为 404 |
+| 参数与不存在 | 非 32 位 hex 返回 422；合法但不存在的 ID 返回 404；Agent 未就绪返回 503 |
+| 当前会话删除 | 确认文案带上会话标题；删除后列表 3 → 2，URL 切到新的 32 位 thread，当前项变为「新会话（未发送）」 |
+| 非当前会话删除 | 列表少一条，URL 与当前会话不变；删除按钮只出现在真实历史会话上，未发送的占位项没有 |
+| 数据隔离 | 只用临时线程 `aaaa…`/`bbbb…`/`dddd…` 做实测；用户自己的两条会话未改动 |
+| 未测 | 原生确认框的实际渲染与键盘操作（in-app 浏览器视口宽为 0，侧栏被媒体查询隐藏，只断言了确认文案与后续请求）、删除与正在流式生成的并发、超大线程的删除耗时 |
+
+真实浏览器之外的替代验证：用 `innerWidth=0` 的 in-app 浏览器直接调用行内按钮点击，并临时替换 `window.confirm` 记录文案、返回 `true`；轮询 DOM 直到目标行消失，再回查 `/sessions`、`/trace` 与 checkpoint 表。
+
 ## 6. 这些测试有什么用
 
 1. **改动前先知道现状。** easy 检索能说“Top-1 65.45%，Top-3 94.55%”，hard 检索能说“Top-1 55.00%，Top-8 90.00%”，回答能说“easy 通过率 96.25%、hard 通过率 96.00%”，而不是“感觉挺准”。
 2. **改动后能证明是否变好。** M2 的切分、混合召回、重排都跑同一套 easy + hard 题；报告子流程跑同一套 10 题，成对报效果和延迟。
 3. **失败能定位到层。** hard 的 Source@3 是 100% 但 Span@8 只有 90%，问题在片段级；报告字段完整但忠实度不足，问题在生成而不是取数；pass^k 波动题则说明单次通过不可靠。
 4. **面试有证据。** 题量、标注口径、指标定义、复现命令、失败案例都能当场打开；hard split 与 pass^k 能回答“是不是只会背原句、是不是碰巧通过”。
-5. **防止回归。** 改配置或换模型后，先跑两套 `--validate-only` 和 80 个单测，再跑基线，避免“修一个坏三个”。
+5. **防止回归。** 改配置或换模型后，先跑两套 `--validate-only` 和 84 个单测，再跑基线，避免“修一个坏三个”。
 
 ## 7. 设计取舍与边界
 
@@ -450,4 +466,4 @@ hard 的完全正确率 75.00% 明显低于 easy 的 80.00%，关键词命中率
 3. **扩大 hard split**：25 题能暴露问题，但样本仍小；下一步加入更多跨章节组合、近似干扰项和错别字问法，并把越界路由准确率纳入同一套基线。
 4. **越界边界补强**：`neg-004` / `neg-009` 已由确定性拒答覆盖（见 5.10）；`hard-neg-002/004` 这类“能力边界”问题仍需提示词或规则补充。
 5. **服务化收尾**：给 `/chat/stream` 加鉴权、限流与 `thread_id` 归属校验；trace 换 Postgres 或接 OpenTelemetry；补浏览器端自动化测试。
-6. 把两套 `--validate-only` + 80 个单测接进 CI，基线作为人工回归。
+6. 把两套 `--validate-only` + 84 个单测接进 CI，基线作为人工回归。
