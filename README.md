@@ -136,7 +136,7 @@ python -m agent.react_agent
 | `done` | `answer`, `latency_ms`, `first_token_ms`, `usage`, `cost_cny`, `tool_calls` | 正常结束与统计 |
 | `error` | `code`, `message`, `trace_id` | 失败，对外只给通用提示 |
 
-前端用 `fetch` + `ReadableStream` 解析 SSE，支持停止生成、新会话、历史恢复；右侧列出最近会话（标题取首个问题），点击可直接切换，近 7 天用量与单条 trace 入口分别保留在侧栏和每条回答底部。
+前端用 `fetch` + `ReadableStream` 解析 SSE，支持停止生成、新会话、历史恢复；右侧列出最近会话（标题取首个问题），点击可直接切换，并展示近 7 天用量。回答气泡只保留正文，不渲染工具调用与耗时/token/trace 统计；这些数据仍通过 `/trace/{id}` 与 `/usage` 查询。
 
 ## 数据与配置
 
