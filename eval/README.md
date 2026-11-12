@@ -2,7 +2,7 @@
 
 > 目标：把「检索对不对、答得对不对」变成可复现的数字。当前已完成 **M2 检索升级的四阶段前后对比**、easy / hard 两套检索与回答基线、`--repeat` 的 **pass^k**，以及无证据阈值的 **可复现标定**。
 >
-> 测试分层、126 个用例与结果说明见 [docs/testing.md](../docs/testing.md)；M2 四阶段对比见该文档 5.13 节，报告延迟剖析见 5.6 节。
+> 测试分层、160 个用例与结果说明见 [docs/testing.md](../docs/testing.md)；M2 四阶段对比见该文档 5.13 节，报告延迟剖析见 5.6 节，身份登录与会话归属的实跑见 5.14 节。
 
 ## 1. 数据集
 
@@ -332,7 +332,7 @@ python eval/calibrate_min_score.py
 #   mode: hybrid + rerank.enabled: false  → 只看混合召回
 #   mode: vector + rerank.enabled: false  → 回到 M2 之前的纯向量
 
-# 纯函数单测（126 个，不需要 API Key）
+# 纯函数单测（160 个，不需要 API Key）
 python -m unittest discover -s tests
 ```
 

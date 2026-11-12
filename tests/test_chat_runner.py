@@ -12,7 +12,7 @@ class FakeAgent:
         self.error = error
         self.seen_account = None
 
-    def iter_chat(self, query, thread_id="default", token_account=None):
+    def iter_chat(self, query, thread_id="default", token_account=None, owner_user_id=None):
         self.seen_account = token_account
         if token_account is not None:
             token_account.add(
@@ -132,7 +132,7 @@ class ChatRunnerTest(unittest.TestCase):
 
     def test_missing_usage_is_not_fabricated(self):
         class NoUsageAgent(FakeAgent):
-            def iter_chat(self, query, thread_id="default", token_account=None):
+            def iter_chat(self, query, thread_id="default", token_account=None, owner_user_id=None):
                 for event in self.events:
                     yield event
 
@@ -149,7 +149,7 @@ class ChatRunnerTest(unittest.TestCase):
 
     def test_out_of_scope_usage_is_none_not_missing(self):
         class NoUsageAgent(FakeAgent):
-            def iter_chat(self, query, thread_id="default", token_account=None):
+            def iter_chat(self, query, thread_id="default", token_account=None, owner_user_id=None):
                 for event in self.events:
                     yield event
 

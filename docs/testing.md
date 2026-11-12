@@ -27,7 +27,8 @@
 | 观测底座单测 | `tests/test_observability.py` | 用量归一/提取/去重、成本估算、trace/span 落库查询、按会话删除 | 否 | 毫秒级 |
 | 会话索引单测 | `tests/test_session_index.py` | 线程过滤、UUIDv6 时间解析、首问标题与截断、checkpoint 分组排序、按线程删除 | 否 | 毫秒级 |
 | 事件流单测 | `tests/test_chat_runner.py` | SSE 事件序列、trace 落库、错误/取消、缺用量不伪造成本 | 否（fake agent） | 毫秒级 |
-| API 单测 | `tests/test_api.py` | health、chat SSE、会话列表/历史/删除、trace、usage、503 not_ready | 否（fake runner） | 毫秒级 |
+| API 单测 | `tests/test_api.py` | health、chat SSE、会话列表/历史/删除、trace、usage、503 not_ready；登录态、401/403、会话按归属过滤、`owner_user_id` 透传 | 否（fake runner） | 毫秒级 |
+| 身份单测 | `tests/test_auth.py` | 密码哈希加盐与校验、畸形哈希拒绝、账号种子幂等、`demo_users()` 不含密码、环境变量覆盖密码、登录/登出/过期令牌、会话认领与归属过滤、旧会话收养、关闭鉴权仍可用 | 否 | 毫秒级 |
 | pass^k 单测 | `tests/test_passk.py` | 严格通过、至少一次、波动题、repeat=1 | 否 | 毫秒级 |
 | 切分单测 | `tests/test_chunking.py` | QA 对/错误码块/编号列表不切断、preamble 归属、元数据、切分签名随参数变化、真实语料零丢行 | 否 | 毫秒级 |
 | 混合检索单测 | `tests/test_hybrid_retrieval.py` | 分词（ASCII + CJK 单/双字）、BM25 打分与截断、RRF 融合、vector 模式退化、索引重建、stats 字段 | 否（fake 向量库） | 毫秒级 |
@@ -205,6 +206,17 @@
 
 输出 `eval/results/min_score_calibration.{json,md}`，含分布表、建议阈值和边界样本表（分数最低的 answerable 与最高的 negative 各若干条），换语料或换重排模型后重跑即可。
 
+### 3.11 身份与会话归属单测（27 个）
+
+鉴权这类代码的特点是「漏一个分支就等于没有」，所以两层都按分支铺满，全部离线：
+
+| 文件 / 数量 | 关键验证点 |
+|---|---|
+| `tests/test_auth.py`（17） | 同一密码两次哈希结果不同（盐生效）、`verify_password` 对正确/错误密码分别真/假、畸形哈希（段数不对、算法不认识、盐不是 hex）一律当失败而不是抛异常；同盐同迭代次数可复现；账号种子重复跑不会覆盖已有行；`demo_users()` 只回 `username/display_name/user_id`，**不含哈希**；`AUTH_DEMO_PASSWORD` 能覆盖配置密码；空用户名/空密码/不存在账号/错密码都登录失败；绑定的业务用户 ID 会跟着 `User` 一起传出去；登出只撤销那一个令牌；`token_ttl_hours=-1` 时令牌立刻查不到；乱写的令牌查不到；`claim_thread` 先写先占（第二个人认领返回真正的归属者）；`owned_thread_ids` / `owner_filter` 只放行自己的线程；`release_thread` 删除归属行；`adopt_threads` 只收养没有归属的行、不抢别人已认领的；`enabled=False` 时所有方法仍可用 |
+| `tests/test_api.py::AuthApiTest`（10） | 业务接口无令牌 401（`/sessions`、`/history`、`/usage`、`/traces`、`DELETE`、`/chat/stream`），`/health`、`/`、`/auth/bootstrap` 公开；裸令牌与错误 scheme 不放行；`bootstrap` 不泄露任何凭据字段；密码错误 401；`/auth/me` 与登出；令牌换个 `TestClient` 仍然有效、过期后失效；别人的线程 403（对话/历史/删除三条路径）且 `owner_user_id` 透传正确；会话列表按归属过滤；不带 `thread_id` 时每个用户各拿到一个新的 32 位 hex；`enabled=False` 时行为回到旧版（无令牌 200、不过滤、不写归属行、`owner_user_id` 为 `None`） |
+
+设计取舍：**`_AppTestCase` 基类持有 `setUp/tearDown/login/claim`，`ApiTest` 与 `AuthApiTest` 各自继承**——第一版把 `AuthApiTest` 写成 `ApiTest` 的子类，结果 8 个旧用例被重跑一遍，既慢又让失败信息指错地方。哈希迭代次数在测试里降到 1000，算法与校验逻辑不变。
+
 ## 4. 怎么运行
 
 ```bash
@@ -274,7 +286,7 @@ python eval/calibrate_min_score.py
 | 项 | 结果 |
 |---|---|
 | 数据集校验 | `VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`，0 个错误 |
-| 单元测试 | **126 个全部通过，约 1.0 秒**（M2 前 84 个；新增切分 8、混合检索 20、重排 9、RAG 服务 5） |
+| 单元测试 | **160 个全部通过，约 4.5 秒**（M2 前 84 个；M2 后 126 个：新增切分 8、混合检索 20、重排 9、RAG 服务 5；身份上线后 160 个：新增 `test_auth.py` 17、`AuthApiTest` 10、报告归属 4、报告参数补齐 3） |
 | 向量库 | **145 个向量**、145 个唯一 ID、145 段唯一内容、5 个来源/md5 组合、`hnsw:space=cosine`、`split_sig=95ec9f1c38e8`（M2 前：66 个向量、默认 L2） |
 | 索引幂等 | 同一语料第二次 `load_document()` 全部跳过，不重新 embedding、不产生重复 ID |
 | easy 回答级评测 | 80 题全部执行，生成与判分错误 0（M2 后复跑见 5.13） |
@@ -618,13 +630,57 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 - **`min_score` 只有 4% 余量**，扰动测试只做了 1 题 × 3 次（抖动 ±0.0001），没有覆盖全部边界样本，也没有测重排模型版本更新后的分数漂移。
 - **切分只在当前 5 个语料文件上验证**，`test_real_data_files_lose_no_line` 保证不丢行，但没验证新增文档类型（表格、Markdown 标题层级）时的切分行为。
 
+### 5.14 身份登录与会话归属（2026-11-13）
+
+**测什么**：登录态是否真的挡在业务接口前面、会话是否按账号隔离、报告链路是否拦得住「查别人的使用记录」，以及前端登录/退出/403 的实际表现。
+
+**怎么测**：三层。① `tests/test_auth.py` 17 个 + `tests/test_api.py::AuthApiTest` 10 个纯单测（临时库、`iterations=1000`、fake agent，不联网）；② `uvicorn server.app:app --port 8123` 起真服务、真模型，用脚本按 HTTP 打完整流程；③ 浏览器打开页面，用结构性快照 + JS 驱动真实 DOM 事件走一遍登录/切换/发送/删除/退出/越权。
+
+**结果（自动测试）**：
+
+| 项 | 结果 |
+|---|---|
+| 单元测试 | **160 个全部通过，约 4.5 秒**（比 126 个时慢 3.5 秒，主要是 `TestClient` 生命周期会拉起真 Agent 与 145 chunk 向量库，以及 PBKDF2 20 万次迭代） |
+| 种子幂等 | 已存在的账号不再重新哈希：冷启动 0.184 秒、二次启动 **0.005 秒** |
+| 公开接口 | `/health`、`/auth/bootstrap`、`/`、`/static` 无令牌 200；`bootstrap` 返回的每个账号只有 `username / display_name / user_id` 三个键，整个响应里搜不到 `pbkdf2_sha256` |
+| 无令牌 | `/sessions`、`/usage`、`/traces`、`/auth/me`、`/history/{id}`、`/chat/stream` 全部 **401**；`Authorization: nonsense` 与裸令牌同样 401 |
+| 登录 | 密码错误 401；`demo` / `alice` 各拿到不同令牌，`expires_in_hours=12`；`/auth/me` 回 `demo / ID 1001` |
+
+**结果（HTTP 实跑，真模型）**：
+
+| 场景 | 观测 |
+|---|---|
+| demo 问答一次 | SSE `meta → tool×2 → delta×31 → done`；`thread_id` 是服务端新发的 32 位 hex（不再共用 `default`）；`usage` 3,516 tokens、成本 ¥0.009706、trace 落库 |
+| alice 碰 demo 的会话 | `/history` **403**、`/chat/stream` **403**、`DELETE /sessions/{id}` **403**；`/sessions` 里也看不到这条；agent 侧收到的 `owner_user_id` 始终是 `1001`，从未出现 `1002` |
+| 旧会话归属 | 启动日志 `[auth] 已把 2 个旧会话归到 legacy_owner 名下`；demo 侧栏 2 条、alice 侧栏 **0 条** |
+| 越权报告 | alice 问「生成用户 1001 的报告」→ 固定拒答（同时点名 1001 与 1002）、`tool_calls=0`、`usage.source="none"`、成本为空、端到端 **47 ms**（零取数零模型） |
+| 自己的报告 | demo 问「帮我看下我 2026-10 的使用报告」→ 取数 1 次 + 写作 1 次、823 tokens、380 字正文、trace `route=report / status=ok`。**修 P17 之前这里返回的是越权拒答** |
+| 零成本探针 | 问没有记录的 2020-01：demo 的回答带 `1001`、alice 的带 `1002`，两者都 `usage.source="none"`——用空记录分支反查参数解析结果，不花 token |
+| 登出 | 令牌立即失效（`/auth/me` 401），另一个账号的令牌不受影响 |
+
+**结果（浏览器实跑）**：登录面板渲染出标题、说明、账号/密码框、两个演示账号 chip 与提示语；错误密码时面板留着并显示「账号或密码不正确。」且不写令牌；chip 只填用户名并把焦点移到密码框（不自动填密码）；demo 登录后面板消失、顶栏显示「演示用户 / ID 1001」；侧栏 2 条旧会话可点击切换并加载出 2 条历史消息，URL 与 `localStorage` 同步；发一条越界问题走 SSE 流式拒答、会话数变 3、用量面板刷新到 9 次 / 12,024 tokens；× 删除该测试会话后回到 2 条；退出后令牌清空、面板重现、侧栏清空；alice 登录显示「Alice / ID 1002」、0 条会话；alice 强行打开 demo 的 thread（改 `localStorage` + URL 重载）时出现横幅「原会话属于其他账号，已为你开启新会话。」，消息区只剩欢迎语（**没有泄露任何历史内容**）并自动换新 thread；再切回 demo，2 条会话正常、横幅不残留。
+
+**用途**：这条链路是「多用户隔离」的最小可验证证据——面试追问「你怎么保证 A 看不到 B 的对话」时，可以当场演示 401/403、侧栏过滤和零 token 的越权拒答，而不是只讲设计。
+
+**清理**：验证过程造的 4 个会话及其 trace 全部用 `DELETE /sessions/{id}` 删掉；另有 1 条被截断成 12 位的 thread_id（脚本 bug 造成的孤儿线程，接口删不掉）手工从 `checkpoints` 与 `thread_owner` 清掉。库里只剩用户原有的 2 条会话，归属 `demo`。
+
+**未测 / 待补**：
+
+- **视觉层面没有像素级检查**：in-app 浏览器没有可见视口（`NATIVE_BROWSER_VIEWPORT_UNAVAILABLE`），截图与真实点击都不可用，只能用结构性快照 + JS 驱动 DOM 事件；登录面板的配色、间距、移动端断点属于**未实测**。
+- **多用户并发未测**：两个账号同时写同一个 thread、令牌表并发写入、SQLite WAL 下的锁竞争都只在单请求串行下验证过。
+- **令牌过期的前端行为只测了后端**：单测用 `token_ttl_hours=-1` 验证过期令牌查不到，浏览器侧只验证了 401 会退回登录面板，没验证「用到一半过期」的流式中断表现。
+- **限流还没有**（下一步 #29），所以没有 429 相关测试。
+- **观测接口不按账号隔离**：alice 登录后 `/usage` 仍显示全量 8 次 / 12,024 tokens，其中大部分是 demo 产生的；这是已知边界（`docs/design.md` 第 7 节第 20 条），本轮没有改。
+- **Streamlit 入口未测**：它直接调 `ReactAgent`、不走 HTTP，因此不受鉴权影响（等价于 `enabled: false` 的行为），本轮没有实跑。
+- **`enabled: false` 只在单测里验证**（无令牌 200、不过滤、不写归属行、`owner_user_id` 为 `None`），没有起真服务复跑。
+
 ## 6. 这些测试有什么用
 
 1. **改动前先知道现状。** M2 之前能说“easy Top-1 65.45%、Top-3 94.55%，hard Top-1 55.00%、Top-8 90.00%”，而不是“感觉挺准”；正是这几个数字指出了「文件能找到、片段找不到」。
 2. **改动后能证明是否变好，也能证明哪一步没用。** M2 的切分、混合召回、重排各跑一次同一套 easy + hard 题，才敢说「切分单独上会让 Span@3 掉 7 个百分点、重排才是主要杠杆」（5.13）；只看最终分是得不出这个结论的。
 3. **失败能定位到层。** hard 的 Source@3 是 100% 但 Span@8 只有 90%，问题在片段级；`qa-042` 因此能用一次切分改动修好；报告字段完整但忠实度不足，问题在生成而不是取数；pass^k 波动题则说明单次通过不可靠。
 4. **面试有证据。** 题量、标注口径、指标定义、复现命令、失败案例都能当场打开；hard split 与 pass^k 能回答“是不是只会背原句、是不是碰巧通过”；分阶段结果文件能回答“这个提升到底是哪一步带来的”。
-5. **防止回归。** 改配置或换模型后，先跑两套 `--validate-only` 和 126 个单测，再跑检索与回答级基线；换语料或换重排模型还要重跑 `calibrate_min_score.py`，避免“修一个坏三个”。
+5. **防止回归。** 改配置或换模型后，先跑两套 `--validate-only` 和 160 个单测，再跑检索与回答级基线；换语料或换重排模型还要重跑 `calibrate_min_score.py`，避免“修一个坏三个”。
 
 ## 7. 设计取舍与边界
 
@@ -643,6 +699,8 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 - **重排失败静默退回 RRF 序**：可用性优先，不让一次外部调用失败变成 500；代价是质量掉分不报错，只能靠 stats 里的 `rerank=fallback` 事后发现，当前没有告警。
 - **`min_score` 是全局单一阈值**：不按问题类型分档。报告题的重排分天然偏低（最低 0.0801），但报告走确定性子流程不经过 RAG 检索，所以不冲突；如果以后有别的链路复用这条检索管线，阈值要重新评估。
 - **阈值标定排除已被路由拦下的负样本**：那 15 条根本走不到重排，算进来会把阈值抬高、误伤可答题；代价是标定脚本必须知道 `scope_router` 的行为，两个模块耦合了一层。
+- **身份是演示级、单测用低迭代次数**：`tests/test_auth.py` 与 `AuthApiTest` 都传 `iterations=1000`（生产配置 20 万），否则 17 + 10 个用例光哈希就要几秒；哈希算法与校验逻辑不变，只是慢函数被调快了。账号写死在 `config/auth.yml`，没有注册、刷新令牌与角色权限，测的是「隔离与越权拦截」而不是「账号体系」。
+- **鉴权相关单测都用临时库**：`AuthStore` 与 `TraceStore` 都指向 `tempfile` 目录，绝不碰 `checkpoints/` 里的真实身份库与会话；HTTP 实跑才用真库，跑完把造的会话删干净（见 5.14 的清理段）。
 
 ## 8. 下一步
 
@@ -652,5 +710,5 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 4. **扩大 hard split**：25 题能暴露问题，但样本仍小；下一步加入更多跨章节组合、近似干扰项和错别字问法，并把越界路由准确率纳入同一套基线。
 5. **越界边界补强**：`neg-004` / `neg-009` 已由确定性拒答覆盖（见 5.10），`hard-neg-001/002/003/004/005` 已由无证据兜底覆盖（见 5.13）；剩下的是「知识库里有相邻内容、但答案其实不存在」这类灰区，仍靠模型判断。
 6. **重排可观测性**：给 `rerank=fallback` 加计数与告警，重排分低于阈值时把 `top_score` 写进 trace span，便于事后判断是「真没证据」还是「重排挂了」。
-7. **服务化收尾**：给 `/chat/stream` 加登录态、限流与 `thread_id` 归属校验；会话历史压缩；回答引用溯源；trace 换 Postgres 或接 OpenTelemetry；补浏览器端自动化测试。
-8. 把两套 `--validate-only` + 126 个单测 + `calibrate_min_score.py` 接进 CI，检索与回答级基线作为人工回归。
+7. **服务化收尾**：~~给 `/chat/stream` 加登录态与 `thread_id` 归属校验~~（已完成，见 5.14）；剩下按用户限流、会话历史压缩、回答引用溯源、trace 换 Postgres 或接 OpenTelemetry、观测数据按账号隔离、补浏览器端自动化测试（当前浏览器验证靠手工驱动 DOM，截图能力受限于宿主视口）。
+8. 把两套 `--validate-only` + 160 个单测 + `calibrate_min_score.py` 接进 CI，检索与回答级基线作为人工回归。

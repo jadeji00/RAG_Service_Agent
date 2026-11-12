@@ -30,8 +30,17 @@ class ChatRunner:
         self.store = store or TraceStore()
         self.model_name = model_name or rag_conf.get("chat_model_name", "unknown")
 
-    def stream(self, query: str, thread_id: str = "default") -> Iterator[dict[str, Any]]:
-        """产出 ``{"event": name, "data": {...}}``，由 SSE 层编码。"""
+    def stream(
+        self,
+        query: str,
+        thread_id: str = "default",
+        owner_user_id: str | None = None,
+    ) -> Iterator[dict[str, Any]]:
+        """产出 ``{"event": name, "data": {...}}``，由 SSE 层编码。
+
+        ``owner_user_id`` 透传给 Agent 的报告链路做归属校验；为空表示没有
+        登录态（评测/CLI），不拦。
+        """
         trace_id = uuid.uuid4().hex
         started = time.perf_counter()
         started_at = utc_now_iso()
@@ -53,6 +62,7 @@ class ChatRunner:
                 query,
                 thread_id=thread_id,
                 token_account=account,
+                owner_user_id=owner_user_id,
             ):
                 event_type = event.get("type")
 
@@ -175,9 +185,11 @@ class ChatRunner:
             latency_ms = (time.perf_counter() - started) * 1000
             usage = account.as_dict()
             has_usage = usage.get("source") == "provider"
-            # 越界请求不调用模型，属于「本来就没有用量」，不能算作供应商漏报。
+            # 本来就不会调用模型的路径（越界拒答、报告越权拒答、空记录）没有用量，
+            # 属于「本来就没有」，不能算作供应商漏报。
             usage_source = usage.get("source", "missing")
-            if not has_usage and route == "out_of_scope":
+            no_model_call = bool((result or {}).get("no_model_call"))
+            if not has_usage and (route == "out_of_scope" or no_model_call):
                 usage_source = "none"
             usage["source"] = usage_source
             cost = (

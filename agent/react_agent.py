@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from typing import Callable
 
 from langchain.agents import create_agent
 from langchain_community.chat_models.tongyi import ChatTongyi
@@ -112,9 +113,17 @@ class ReactAgent:
         query: str,
         user_id: str | None = None,
         month: str | None = None,
+        owner_user_id: str | None = None,
     ) -> dict:
         """走确定性报告子流程，不经过 ReAct 的工具选择。"""
-        return generate_report(query, user_id=user_id, month=month)
+        return generate_report(
+            query, user_id=user_id, month=month, owner_user_id=owner_user_id
+        )
+
+    @property
+    def checkpoint_db_path(self) -> str | None:
+        """checkpoint 库路径；服务层用它给旧会话补归属，内存记忆时为 None。"""
+        return getattr(self, "_checkpoint_db_path", None)
 
     def _remember_exchange(self, query: str, answer: str, thread_id: str) -> None:
         """报告/拒答子流程不经过 create_agent，手动把一问一答写回同一个 thread。"""
@@ -136,8 +145,12 @@ class ReactAgent:
         query: str,
         thread_id: str = "default",
         token_account: TokenAccount | None = None,
+        owner_user_id: str | None = None,
     ):
         """产出路由、增量文本、工具状态与最终结果事件。
+
+        ``owner_user_id`` 是登录账号绑定的业务用户 ID；报告链路会用它拦住
+        「查别人使用记录」的请求。为空表示调用方没有登录态，不做归属校验。
 
         事件类型：
         - route:    {"route": "qa" | "report" | "out_of_scope"}
@@ -157,6 +170,7 @@ class ReactAgent:
                 "type": "result",
                 "route": "out_of_scope",
                 "answer": OUT_OF_SCOPE_ANSWER,
+                "no_model_call": True,
             }
             return
 
@@ -164,7 +178,9 @@ class ReactAgent:
             report_emitted = 0
             report_result = None
             try:
-                for event in stream_report(query, usage_sink=account.add):
+                for event in stream_report(
+                    query, usage_sink=account.add, owner_user_id=owner_user_id
+                ):
                     event_type = event.get("type")
                     if event_type == "delta":
                         report_emitted += len(event.get("text", ""))
@@ -309,11 +325,17 @@ class ReactAgent:
 
         return history
 
-    def list_sessions(self, limit: int = 20) -> list[dict]:
+    def list_sessions(
+        self,
+        limit: int = 20,
+        thread_filter: Callable[[str], bool] | None = None,
+    ) -> list[dict]:
         """列出可恢复的历史会话，供侧栏展示。
 
         只认两个前端生成的 32 位 hex 线程，标题取该线程的第一条用户消息，
         按最后写入顺序返回；没有用户消息的线程（例如只写了工具状态）跳过。
+        ``thread_filter`` 由服务层传入做归属过滤，在截断 limit 之前生效，
+        这样「别人的会话」不会挤掉自己的名额。
         """
         limit = max(1, min(int(limit), 50))
         db_path = getattr(self, "_checkpoint_db_path", None)
@@ -329,6 +351,8 @@ class ReactAgent:
         for item in threads:
             if len(sessions) >= limit:
                 break
+            if thread_filter is not None and not thread_filter(item["thread_id"]):
+                continue
             history = self.load_history(item["thread_id"])
             title = make_title(history)
             if not title:

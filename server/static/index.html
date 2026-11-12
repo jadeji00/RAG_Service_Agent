@@ -296,6 +296,73 @@
       position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
       overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
     }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .who {
+      display: none; align-items: center; gap: 9px;
+      padding: 6px 7px 6px 13px;
+      border: 1px solid var(--line); border-radius: 999px;
+      background: rgba(255, 253, 248, 0.7);
+      font-size: 12px; color: var(--muted);
+    }
+    .who.show { display: inline-flex; }
+    .who .name { color: var(--accent-ink); font-weight: 600; }
+    .who .uid {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10.5px; color: var(--faint);
+    }
+    .who button {
+      border: 0; border-radius: 999px; padding: 4px 10px;
+      background: transparent; color: var(--faint); font-size: 11px;
+      transition: background .15s, color .15s;
+    }
+    .who button:hover { background: var(--danger-soft); color: var(--danger); }
+    .login-overlay {
+      position: fixed; inset: 0; z-index: 40;
+      display: none; place-items: center;
+      padding: 20px;
+      background: rgba(246, 243, 236, 0.88);
+      backdrop-filter: blur(5px);
+    }
+    .login-overlay.show { display: grid; }
+    .login-card {
+      width: min(380px, 100%);
+      padding: 26px 24px 22px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+    .login-card h2 {
+      margin: 0;
+      font-family: "Iowan Old Style", "Songti SC", "Noto Serif SC", Georgia, serif;
+      font-size: 20px; font-weight: 600;
+    }
+    .login-card .sub { margin: 7px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .login-field { margin-bottom: 11px; }
+    .login-field label {
+      display: block; margin-bottom: 5px;
+      font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint);
+    }
+    .login-field input {
+      width: 100%; padding: 10px 12px;
+      border: 1px solid #dcd4c5; border-radius: 12px;
+      background: #fffdf8; color: var(--ink); font-size: 13.5px; outline: 0;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .login-field input:focus { border-color: #a9c6ba; box-shadow: 0 0 0 4px rgba(47,107,95,.08); }
+    .login-submit {
+      width: 100%; margin-top: 7px; padding: 11px 14px;
+      border: 0; border-radius: 12px;
+      background: var(--accent); color: #fbfaf5;
+      font-size: 13px; letter-spacing: .04em;
+      transition: background .15s, opacity .15s;
+    }
+    .login-submit:hover { background: #285c51; }
+    .login-submit:disabled { opacity: .5; cursor: not-allowed; }
+    .login-error { display: none; margin-top: 10px; color: var(--danger); font-size: 12px; }
+    .login-error.show { display: block; }
+    .login-accounts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 15px; }
+    .login-hint { margin-top: 12px; color: var(--faint); font-size: 11px; line-height: 1.7; }
     @media (max-width: 980px) {
       .shell { width: min(100% - 24px, 900px); padding-top: 14px; }
       .layout { grid-template-columns: 1fr; }
@@ -326,7 +393,14 @@
           <p>Robot support agent / traceable answers</p>
         </div>
       </div>
-      <div class="status" id="status"><span class="dot"></span><span id="status-text">连接中</span></div>
+      <div class="topbar-right">
+        <div class="who" id="who">
+          <span class="name" id="who-name">—</span>
+          <span class="uid" id="who-uid"></span>
+          <button type="button" id="logout">退出</button>
+        </div>
+        <div class="status" id="status"><span class="dot"></span><span id="status-text">连接中</span></div>
+      </div>
     </header>
 
     <main class="layout">
@@ -385,6 +459,25 @@
         </section>
       </aside>
     </main>
+
+    <div class="login-overlay" id="login-overlay" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <form class="login-card" id="login-form">
+        <h2 id="login-title">登录 · Sign in</h2>
+        <p class="sub">会话按账号隔离：只能看到并继续自己的历史对话，报告也只读自己绑定的用户数据。</p>
+        <div class="login-field">
+          <label for="login-username">账号 · Username</label>
+          <input id="login-username" name="username" autocomplete="username" maxlength="64" required />
+        </div>
+        <div class="login-field">
+          <label for="login-password">密码 · Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="128" required />
+        </div>
+        <button class="login-submit" id="login-submit" type="submit">登录</button>
+        <div class="login-error" id="login-error"></div>
+        <div class="login-accounts" id="login-accounts"></div>
+        <div class="login-hint" id="login-hint"></div>
+      </form>
+    </div>
   </div>
 
   <script>
@@ -407,6 +500,18 @@
       charCount: document.getElementById('char-count'),
       examples: document.getElementById('examples'),
       welcome: document.getElementById('welcome'),
+      who: document.getElementById('who'),
+      whoName: document.getElementById('who-name'),
+      whoUid: document.getElementById('who-uid'),
+      logout: document.getElementById('logout'),
+      loginOverlay: document.getElementById('login-overlay'),
+      loginForm: document.getElementById('login-form'),
+      loginUsername: document.getElementById('login-username'),
+      loginPassword: document.getElementById('login-password'),
+      loginSubmit: document.getElementById('login-submit'),
+      loginError: document.getElementById('login-error'),
+      loginAccounts: document.getElementById('login-accounts'),
+      loginHint: document.getElementById('login-hint'),
     };
 
     let threadId = localStorage.getItem('robocare_thread') || '';
@@ -419,6 +524,11 @@
     let lastRaw = '';
     let sessions = [];
     let historySeq = 0;
+    let authToken = localStorage.getItem('robocare_token') || '';
+    let currentUser = null;
+    let authEnabled = false;
+    let demoAccounts = [];
+    let loginHint = '';
 
     function newThreadId() {
       if (crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '');
@@ -680,6 +790,148 @@
       }
     }
 
+    function setToken(token) {
+      authToken = token || '';
+      if (authToken) localStorage.setItem('robocare_token', authToken);
+      else localStorage.removeItem('robocare_token');
+    }
+    function authHeaders(extra) {
+      const headers = Object.assign({}, extra || {});
+      if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+      return headers;
+    }
+    function renderWho() {
+      if (!currentUser) { els.who.classList.remove('show'); return; }
+      els.whoName.textContent = currentUser.display_name || currentUser.username;
+      els.whoUid.textContent = currentUser.user_id ? 'ID ' + currentUser.user_id : '';
+      els.who.classList.add('show');
+    }
+    function showLogin(message) {
+      els.loginError.textContent = message || '';
+      els.loginError.classList.toggle('show', !!message);
+      els.loginHint.textContent = loginHint;
+      els.loginAccounts.innerHTML = '';
+      for (const account of demoAccounts) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'example';
+        button.textContent = account.display_name && account.display_name !== account.username
+          ? `${account.username} · ${account.display_name}`
+          : account.username;
+        button.addEventListener('click', () => {
+          els.loginUsername.value = account.username;
+          els.loginPassword.value = '';
+          els.loginPassword.focus();
+        });
+        els.loginAccounts.appendChild(button);
+      }
+      els.loginOverlay.classList.add('show');
+      if (!els.loginUsername.value) els.loginUsername.focus();
+    }
+    function hideLogin() { els.loginOverlay.classList.remove('show'); }
+
+    // 所有业务接口都走这里：带上令牌，401 就退回登录面板。
+    async function apiFetch(url, options) {
+      const opts = Object.assign({}, options || {});
+      opts.headers = authHeaders(opts.headers);
+      const response = await fetch(url, opts);
+      if (response.status === 401 && authEnabled) {
+        setToken('');
+        currentUser = null;
+        renderWho();
+        showLogin('登录已过期，请重新登录。');
+        throw new Error('unauthorized');
+      }
+      return response;
+    }
+
+    async function bootstrapAuth() {
+      let data;
+      try {
+        const response = await fetch('/auth/bootstrap');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        data = await response.json();
+      } catch (e) {
+        // 拿不到鉴权信息（服务没起 / 关掉了登录）：按无鉴权流程走。
+        afterAuth();
+        return;
+      }
+      authEnabled = !!data.enabled;
+      demoAccounts = Array.isArray(data.users) ? data.users : [];
+      loginHint = data.hint || '';
+      if (!authEnabled) { hideLogin(); renderWho(); afterAuth(); return; }
+
+      if (authToken) {
+        try {
+          const me = await fetch('/auth/me', { headers: authHeaders() });
+          if (me.ok) {
+            currentUser = (await me.json()).user;
+            hideLogin();
+            renderWho();
+            afterAuth();
+            return;
+          }
+        } catch (e) { /* 落到下面重新登录 */ }
+        setToken('');
+      }
+      currentUser = null;
+      renderWho();
+      showLogin('');
+    }
+
+    async function submitLogin(event) {
+      event.preventDefault();
+      const username = els.loginUsername.value.trim();
+      const password = els.loginPassword.value;
+      if (!username || !password) { showLogin('请输入账号和密码。'); return; }
+      els.loginSubmit.disabled = true;
+      try {
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          showLogin(response.status === 401 ? '账号或密码不正确。' : `登录失败：HTTP ${response.status}`);
+          return;
+        }
+        setToken(data.token);
+        currentUser = data.user;
+        els.loginPassword.value = '';
+        hideLogin();
+        renderWho();
+        afterAuth();
+      } catch (e) {
+        showLogin('无法连接服务，请确认 uvicorn 已启动。');
+      } finally {
+        els.loginSubmit.disabled = false;
+      }
+    }
+
+    async function logout() {
+      if (streaming && controller) controller.abort();
+      try { await apiFetch('/auth/logout', { method: 'POST' }); } catch (e) { /* 令牌已失效就算了 */ }
+      const previous = currentUser;
+      setToken('');
+      currentUser = null;
+      sessions = [];
+      renderWho();
+      // 换账号后旧 thread 属于别人，直接开新会话，省掉一次必然的 403。
+      startNewSession();
+      if (authEnabled) {
+        showLogin('');
+        if (previous) els.loginUsername.value = previous.username;
+      }
+    }
+
+    function afterAuth() {
+      refreshUsage();
+      renderSessions();
+      refreshSessions();
+      loadHistory();
+    }
+
     async function sendMessage(text) {
       const query = (text || els.input.value).trim();
       if (!query || streaming) return;
@@ -696,12 +948,16 @@
       controller = new AbortController();
 
       try {
-        const response = await fetch('/chat/stream', {
+        const response = await apiFetch('/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query, thread_id: threadId }),
           signal: controller.signal,
         });
+        if (response.status === 403) {
+          const detail = await response.json().catch(() => ({}));
+          throw Object.assign(new Error(detail.detail || '这个会话属于其他账号'), { forbidden: true });
+        }
         if (!response.ok || !response.body) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -725,6 +981,12 @@
       } catch (error) {
         if (error.name === 'AbortError') {
           addNotice(row, '已停止生成。');
+        } else if (error.message === 'unauthorized') {
+          addNotice(row, '登录已过期，请重新登录后再问一次。');
+        } else if (error.forbidden) {
+          // 线程属于别的账号（换账号登录但本地还留着旧 thread）：开新会话再说。
+          startNewSession();
+          showBanner(error.message + '，已为你开启新会话。');
         } else {
           addNotice(row, '连接中断，请稍后重试。');
           showBanner('无法连接服务：' + error.message);
@@ -752,7 +1014,7 @@
 
     async function refreshUsage() {
       try {
-        const response = await fetch('/usage?days=7');
+        const response = await apiFetch('/usage?days=7');
         if (!response.ok) return;
         const data = await response.json();
         const totals = data.totals || {};
@@ -765,7 +1027,7 @@
 
     async function refreshSessions() {
       try {
-        const response = await fetch('/sessions?limit=20');
+        const response = await apiFetch('/sessions?limit=20');
         if (!response.ok) return;
         const data = await response.json();
         sessions = Array.isArray(data.sessions) ? data.sessions : [];
@@ -797,15 +1059,20 @@
       const remove = row.querySelector('.session-delete');
       if (remove) remove.disabled = true;
       try {
-        const response = await fetch(`/sessions/${encodeURIComponent(item.thread_id)}`, {
+        const response = await apiFetch(`/sessions/${encodeURIComponent(item.thread_id)}`, {
           method: 'DELETE',
         });
+        if (response.status === 403) {
+          showBanner('这个会话属于其他账号，无法删除。');
+          refreshSessions();
+          return;
+        }
         if (!response.ok && response.status !== 404) {
           throw new Error(`HTTP ${response.status}`);
         }
       } catch (e) {
         if (remove) remove.disabled = false;
-        showBanner('删除会话失败，请稍后重试。');
+        if (e.message !== 'unauthorized') showBanner('删除会话失败，请稍后重试。');
         return;
       }
 
@@ -822,7 +1089,14 @@
     async function loadHistory() {
       const seq = ++historySeq;
       try {
-        const response = await fetch(`/history/${encodeURIComponent(threadId)}`);
+        const response = await apiFetch(`/history/${encodeURIComponent(threadId)}`);
+        if (response.status === 403) {
+          if (seq === historySeq) {
+            startNewSession();
+            showBanner('原会话属于其他账号，已为你开启新会话。');
+          }
+          return;
+        }
         if (!response.ok) {
           if (seq === historySeq) resetWelcome('会话加载失败，请稍后重试。');
           return;
@@ -846,6 +1120,7 @@
         }
         scrollToBottom(true);
       } catch (e) {
+        if (e.message === 'unauthorized') return;
         if (seq === historySeq) resetWelcome('会话加载失败，请稍后重试。');
       }
     }
@@ -890,12 +1165,11 @@
       if (streaming) return;
       startNewSession();
     });
+    els.loginForm.addEventListener('submit', submitLogin);
+    els.logout.addEventListener('click', logout);
 
     checkHealth();
-    refreshUsage();
-    renderSessions();
-    refreshSessions();
-    loadHistory();
+    bootstrapAuth();
   </script>
 </body>
 </html>

@@ -28,6 +28,13 @@ from utils.prompt_loader import load_report_prompts
 
 _EMPTY_RECORD_ANSWER = "未找到用户 {user_id} 在 {month} 的使用记录，无法生成报告。"
 
+# 登录账号绑定了业务用户 ID 时，查别人的记录直接拒答，不取数也不调模型。
+OWNER_DENIED_ANSWER = (
+    "只能查询当前登录账号自己的使用记录（本账号绑定用户 {owner}），"
+    "不能读取用户 {requested} 的数据。"
+    "如果 {requested} 也是你的账号，请用它登录后再试。"
+)
+
 
 @lru_cache(maxsize=1)
 def _report_model():
@@ -76,9 +83,19 @@ def resolve_report_request(
     query: str,
     user_id: str | None = None,
     month: str | None = None,
+    owner_user_id: str | None = None,
 ) -> ReportRequest:
-    """补齐报告参数：显式入参优先，其次从问题里抽，最后用 mock 工具补。"""
-    resolved_id = str(user_id or "").strip() or parse_user_id(query) or _mock_user_id()
+    """补齐报告参数：显式入参 > 问题里抽的 > 登录身份 > mock 工具。
+
+    登录身份排在 mock 之前：登录后问「我的报告」没带 ID，用 mock 抽一个随机
+    用户号会撞上归属校验，变成拒绝自己的查询。
+    """
+    resolved_id = (
+        str(user_id or "").strip()
+        or parse_user_id(query)
+        or str(owner_user_id or "").strip()
+        or _mock_user_id()
+    )
     resolved_month = (
         parse_month(month) if month else parse_month(query)
     ) or _mock_month()
@@ -112,12 +129,22 @@ def _iter_report_text(system_prompt: str, question: str):
     )
 
 
-def _prepare_report(
-    query: str,
-    user_id: str | None,
-    month: str | None,
-) -> tuple[ReportRequest, str, list[dict], float]:
-    request = resolve_report_request(query, user_id=user_id, month=month)
+def check_report_owner(request: ReportRequest, owner_user_id: str | None) -> str | None:
+    """归属校验：返回拒答文本，``None`` 表示放行。
+
+    ``owner_user_id`` 为空代表调用方没有登录态（评测脚本、CLI、Streamlit），
+    这时不做校验，保持旧行为。
+    """
+    owner = str(owner_user_id or "").strip()
+    if not owner or request.user_id == owner:
+        return None
+    logger.warning(
+        f"[report pipeline] 越权查询被拦截：登录绑定 {owner}，请求 {request.user_id}"
+    )
+    return OWNER_DENIED_ANSWER.format(owner=owner, requested=request.user_id)
+
+
+def _prepare_report(request: ReportRequest) -> tuple[str, list[dict], float]:
     fetch_started = time.perf_counter()
     record_raw = _fetch_record(request.user_id, request.month)
     fetch_ms = (time.perf_counter() - fetch_started) * 1000
@@ -127,13 +154,14 @@ def _prepare_report(
             "args": {"user_id": request.user_id, "month": request.month},
         }
     ]
-    return request, record_raw, tool_calls, fetch_ms
+    return record_raw, tool_calls, fetch_ms
 
 
 def generate_report(
     query: str,
     user_id: str | None = None,
     month: str | None = None,
+    owner_user_id: str | None = None,
 ) -> dict:
     """跑固定报告流程，返回回答和可审计的执行信息。
 
@@ -141,7 +169,25 @@ def generate_report(
     ``fill_context_for_report``，因为提示词切换由本函数直接决定。
     """
     started = time.perf_counter()
-    request, record_raw, tool_calls, _ = _prepare_report(query, user_id, month)
+    request = resolve_report_request(
+        query, user_id=user_id, month=month, owner_user_id=owner_user_id
+    )
+
+    denied = check_report_owner(request, owner_user_id)
+    if denied:
+        return {
+            "route": "report_pipeline",
+            "request": request,
+            "answer": denied,
+            "record": {},
+            "tool_calls": [],
+            "fetch_args_ok": True,
+            "owner_denied": True,
+            "no_model_call": True,
+            "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+        }
+
+    record_raw, tool_calls, _ = _prepare_report(request)
 
     if not record_raw:
         answer = _EMPTY_RECORD_ANSWER.format(
@@ -176,6 +222,7 @@ def generate_report(
         "record": record,
         "tool_calls": tool_calls,
         "fetch_args_ok": True,
+        "no_model_call": not bool(record_raw),
         "latency_ms": round(latency_ms, 2),
     }
 
@@ -185,6 +232,7 @@ def stream_report(
     user_id: str | None = None,
     month: str | None = None,
     usage_sink=None,
+    owner_user_id: str | None = None,
 ):
     """流式版报告流程，产出 meta / tool / delta / result 事件。
 
@@ -192,7 +240,35 @@ def stream_report(
     这里用增量输出，让前端能边生成边显示。
     """
     started = time.perf_counter()
-    request, record_raw, tool_calls, fetch_ms = _prepare_report(query, user_id, month)
+    request = resolve_report_request(
+        query, user_id=user_id, month=month, owner_user_id=owner_user_id
+    )
+
+    denied = check_report_owner(request, owner_user_id)
+    if denied:
+        yield {
+            "type": "meta",
+            "route": "report",
+            "request": {"user_id": request.user_id, "month": request.month},
+            "tool_calls": [],
+            "fetch_args_ok": True,
+            "owner_denied": True,
+        }
+        yield {"type": "delta", "text": denied}
+        yield {
+            "type": "result",
+            "route": "report",
+            "answer": denied,
+            "record": {},
+            "tool_calls": [],
+            "fetch_args_ok": True,
+            "owner_denied": True,
+            "no_model_call": True,
+            "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+        }
+        return
+
+    record_raw, tool_calls, fetch_ms = _prepare_report(request)
     args = {"user_id": request.user_id, "month": request.month}
 
     yield {
@@ -229,6 +305,7 @@ def stream_report(
             "tool_calls": tool_calls,
             "fetch_args_ok": True,
             "empty": True,
+            "no_model_call": True,
             "latency_ms": round((time.perf_counter() - started) * 1000, 2),
         }
         return
@@ -278,6 +355,7 @@ def stream_report(
 
 __all__ = [
     "ReportRequest",
+    "check_report_owner",
     "generate_report",
     "is_report_query",
     "resolve_report_request",

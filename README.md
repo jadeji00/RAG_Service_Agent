@@ -7,6 +7,7 @@
 - **知识库问答**：按问答对 / 错误码块 / 编号清单做 QA 感知切分（5 个 TXT → 145 chunks），向量化存入 Chroma（cosine）；回答前走「向量 + BM25 双路召回 → RRF 融合 → `gte-rerank-v2` 重排」，取最相关的 3 个片段交给模型。
 - **无证据兜底**：重排最高分低于标定阈值 `min_score` 时，直接返回固定的「知识库里没有相关内容」话术，不调用生成模型、不编造。
 - **多轮对话**：LangGraph checkpointer 把会话写入 SQLite，按 `thread_id` 隔离；侧栏列出历史会话（标题取首个问题），点击即可切换，刷新页面也能恢复；每条会话右侧常驻 × 按钮可删除，二次确认后连同该会话的 trace 一起清理。
+- **登录与会话归属**：演示级账号（PBKDF2-SHA256 加盐哈希 + 随机令牌，存 SQLite，重启不掉线）；会话按 `thread_id` 认领归属，别人换个线程 ID 也读不到你的历史，侧栏只列自己的会话；登录账号绑定的业务用户 ID 会拦下「查别人使用报告」的请求——不取数、不调模型、零 token。
 - **报告生成**：规则路由识别报告意图后走确定性流程——解析用户 ID/月份、直接取数、把记录注入报告提示词，模型只负责一次写作；不依赖模型是否记得调用标记工具。
 - **流式 HTTP 服务**：FastAPI + SSE，按 token 推送回答，同时推送路由、工具开始/结束、错误与最终统计；自带单文件前端，支持会话切换与用量查看。
 - **工具护栏**：调用前校验参数、限制单轮工具预算、拦截重复成功调用、失败最多重试一次；连续拦截后强制模型收口回答。
@@ -21,10 +22,11 @@
 AI_RAG_Agent/
 ├─ app.py                  # Streamlit 界面入口（可选）
 ├─ server/
-│  ├─ app.py               # FastAPI 入口：SSE、历史、trace、用量
+│  ├─ app.py               # FastAPI 入口：登录、SSE、历史、trace、用量
+│  ├─ auth.py              # 演示级身份：密码哈希、令牌、会话归属
 │  ├─ chat_runner.py       # 把 Agent 事件流包装成 trace/成本/done 事件
 │  ├─ sse.py               # SSE 编码
-│  └─ static/index.html    # 单文件前端
+│  └─ static/index.html    # 单文件前端（含登录面板）
 ├─ agent/
 │  ├─ react_agent.py       # Agent 组装、路由、流式事件、会话列表/历史
 │  ├─ report_router.py     # 报告意图识别 + 用户 ID/月份抽取（纯函数）
@@ -122,14 +124,20 @@ python -m agent.react_agent
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/health` | 服务与模型状态；未就绪返回 503 |
-| POST | `/chat/stream` | 请求体 `{"query": "...", "thread_id": "..."}`，返回 SSE |
-| GET | `/sessions?limit=20` | 历史会话列表；标题取首个问题（限 1–50） |
+| GET | `/health` | 服务与模型状态；未就绪返回 503（公开） |
+| GET | `/auth/bootstrap` | 是否启用登录、演示账号列表与提示语，不含任何密码字段（公开） |
+| POST | `/auth/login` | 请求体 `{"username": "...", "password": "..."}`，返回 `token` 与用户信息；密码错误 401 |
+| POST | `/auth/logout` | 撤销当前令牌（需登录） |
+| GET | `/auth/me` | 当前登录身份（需登录） |
+| POST | `/chat/stream` | 请求体 `{"query": "...", "thread_id": "..."}`，返回 SSE；`thread_id` 可省略，服务端会发一个新的 |
+| GET | `/sessions?limit=20` | 历史会话列表；标题取首个问题，只返回当前账号名下的会话（限 1–50） |
 | DELETE | `/sessions/{thread_id}` | 删除一个历史会话及其 trace；非法 ID 返回 422，不存在返回 404 |
 | GET | `/history/{thread_id}` | 还原某个会话的历史消息 |
 | GET | `/traces?limit=20` | 最近 trace 列表（限 1–100） |
 | GET | `/trace/{trace_id}` | 单条 trace + spans；不存在返回 404 |
 | GET | `/usage?days=7` | 近 N 天 token/成本/延迟汇总（限 1–90） |
+
+除 `/health`、`/auth/bootstrap`、`/auth/login` 和静态页面外，其余接口都要带 `Authorization: Bearer <token>`：缺失或过期返回 401，访问别人名下的会话返回 403。`config/auth.yml` 里把 `enabled` 改成 `false` 可以整体关掉鉴权（评测脚本、CLI、Streamlit 走这条路），此时所有接口都不校验、会话也不做归属过滤。
 
 `/chat/stream` 的 SSE 事件：
 
@@ -144,6 +152,8 @@ python -m agent.react_agent
 
 前端用 `fetch` + `ReadableStream` 解析 SSE，支持停止生成、新会话、历史恢复；右侧列出最近会话（标题取首个问题），点击可直接切换，每条会话右侧常驻 × 删除按钮（二次确认，删除当前会话后自动开新会话），并展示近 7 天用量。回答气泡只保留正文，不渲染工具调用与耗时/token/trace 统计；这些数据仍通过 `/trace/{id}` 与 `/usage` 查询。
 
+启用鉴权后，未登录会先弹出登录面板（演示账号可一键填入用户名），登录后顶栏显示当前账号与绑定的用户 ID，并提供退出按钮；令牌存在 `localStorage`，401 会自动退回登录面板，403（会话属于别人）会提示并直接开一个新会话。
+
 ## 数据与配置
 
 - `data/*.txt|pdf`：知识库源文件；默认只索引 TXT（`config/chroma.yml` 的 `allow_knowledge_file_type`）。启动时按文件 md5 + 切分签名判断是否需要重新入库，内容或切分方式变化会先删旧向量再写入；文件被删除后对应向量也会清理。
@@ -152,6 +162,7 @@ python -m agent.react_agent
 - `config/rag.yml`：对话模型与 embedding 模型名称；`retrieval` 段配置混合召回（`mode` / 两路候选数 / `rrf_k`）与重排（`enabled` / `model` / `candidates` / `min_score`）。
 - `config/agent.yml`：外部数据路径、SQLite checkpointer 路径（默认 `checkpoints/agent_memory.sqlite3`）。
 - `config/observability.yml`：trace 数据库路径（默认 `checkpoints/observability.sqlite3`）、模型单价与币种。单价按官方价目表填写；未配置单价的模型只记 token，不估算成本。
+- `config/auth.yml`：是否启用登录、身份库路径（默认 `checkpoints/auth.sqlite3`，已 gitignore）、令牌有效期、PBKDF2 迭代次数、演示账号（用户名 / 显示名 / 密码 / 绑定的业务用户 ID）与旧会话归属者 `legacy_owner`。演示密码可以用环境变量 `AUTH_DEMO_PASSWORD` 覆盖（只对新写入的账号生效）；要彻底重置，删掉身份库重启即可。
 
 ## 护栏与越界
 
@@ -187,7 +198,7 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
   --repeat 3 --out eval/results/hard_pass3.json   # pass^3
 python eval/calibrate_min_score.py                # 标定无证据阈值（约 40 秒）
-python -m unittest discover -s tests              # 126 个单测，不需要 API Key
+python -m unittest discover -s tests              # 160 个单测，不需要 API Key
 ```
 
 检索基线（145 chunks、`text-embedding-v4`、向量 + BM25 + RRF + `gte-rerank-v2`、k=8）：
@@ -227,9 +238,9 @@ M2 前是 easy 完全正确 81.82% / 完全有据 100.00%，hard 通过率 95.00
 
 ## 当前阶段的说明
 
-`get_user_id`、`get_current_month`、`get_user_location` 目前仍是演示用的随机模拟值，用于跑通报告流程。接入真实业务时，应改为由登录态/服务端时间/定位服务提供，而不是让模型猜测。
+`get_user_id`、`get_current_month`、`get_user_location` 目前仍是演示用的随机模拟值，用于跑通报告流程。接入真实业务时，应改为由登录态/服务端时间/定位服务提供，而不是让模型猜测。报告链路已经接上了登录态：账号绑定了业务用户 ID 时，「我的报告」直接用绑定号取数，查别人的 ID 会被拒答。
 
-服务化仍是单机演示形态：没有鉴权、限流和多用户隔离，`thread_id` 由客户端生成；trace 存本地 SQLite。直接暴露公网前，至少需要补上接口鉴权、按用户限流、`thread_id` 归属校验，并把账本换成共享存储。
+身份是**演示级**的：账号写死在 `config/auth.yml`，没有注册、刷新令牌、角色权限和找回密码，公网部署前必须改密码或删库重建。服务化仍是单机形态：没有限流，`thread_id` 由客户端生成（服务端只校验归属），trace 与用量是全局的、不按账号隔离——任何登录用户都能在 `/usage` 看到所有人的 token 账本。直接暴露公网前，至少还需要按用户限流、把观测数据按账号隔离，并把账本换成共享存储。
 
 ## 排障
 
@@ -239,4 +250,8 @@ M2 前是 easy 完全正确 81.82% / 完全有据 100.00%，hard 通过率 95.00
 - **成本显示“—”**：说明没有拿到供应商 token 用量，或 `config/observability.yml` 里没有该模型单价；这是刻意不估算，不是漏记。
 - **正常问题却回“知识库里没有找到相关内容”**：重排最高分低于 `config/rag.yml` 的 `retrieval.rerank.min_score`（当前 0.16）。先跑 `python eval/calibrate_min_score.py` 看分数分布，再决定是调阈值还是补语料；不要直接调高阈值绕过。
 - **回答质量突然下降但没报错**：重排调用失败会静默退回 RRF 融合序，日志里有 `rerank` 警告、检索 stats 里是 `rerank=fallback`；检查网络与 DashScope 额度。
+- **接口一律 401**：令牌缺失、过期（默认 12 小时）或身份库被删。前端会自动退回登录面板；用 curl 时记得带 `Authorization: Bearer <token>`，裸令牌和其他 scheme 都不认。
+- **侧栏会话突然空了**：多半是换了账号——会话按归属过滤，只列自己名下的。登录功能上线前的旧会话会在启动时归到 `config/auth.yml` 的 `legacy_owner`（默认 `demo`），日志里能看到「已把 N 个旧会话归到 legacy_owner 名下」。
+- **报告回「只能查询当前登录账号自己的使用记录」**：请求里的用户 ID 和登录账号绑定的 ID 不一致。换成自己的 ID，或用那个 ID 对应的账号登录；不需要这层校验就把 `config/auth.yml` 的 `enabled` 设为 `false`。
+- **想换掉演示密码**：设环境变量 `AUTH_DEMO_PASSWORD` 后删掉 `checkpoints/auth.sqlite3` 重启（已存在的账号不会被覆盖）。
 - **端口被占用**：FastAPI 用 `--port 8001`；Streamlit 用 `streamlit run app.py --server.port 8502`。

@@ -17,12 +17,14 @@
 
 ```mermaid
 flowchart LR
-    U[单页前端] -->|POST /chat/stream| F[FastAPI]
+    U[单页前端<br/>登录面板 + Bearer 令牌] -->|POST /chat/stream| F[FastAPI]
     F -->|SSE: meta/delta/tool/notice/done/error| U
+    F --> CU{current_user<br/>依赖注入}
+    CU --> AU[(auth.sqlite3<br/>users / tokens / thread_owner)]
     F --> CR[ChatRunner<br/>trace / token / 成本]
     CR --> A[ReactAgent]
     A --> RT{route_intent<br/>确定性三路路由}
-    RT -->|报告| RP[report_pipeline<br/>解析参数 → 取数 → 流式单次写作]
+    RT -->|报告| RP[report_pipeline<br/>归属校验 → 解析参数 → 取数 → 流式单次写作]
     RT -->|越界| OOS[固定拒答<br/>不调用模型]
     RT -->|问答| G[create_agent]
     G --> M[中间件<br/>参数校验 / 预算 / 重复调用拦截 / 强制收口]
@@ -41,6 +43,7 @@ flowchart LR
 关键点：
 
 - **服务层**：`server/app.py` 只负责 HTTP；`ChatRunner` 把 Agent 事件包装成带 trace、token、成本与 `done` 统计的 SSE 流；前端是单文件 HTML，用 `fetch` + `ReadableStream` 解析。
+- **身份层**：`server/auth.py` 管账号、令牌与会话归属，以 FastAPI 依赖 `current_user` 的形式挂在业务接口上；`thread_owner` 首次写入即认领，`/sessions` 用 `owner_filter` 在截断 limit 之前先过滤，报告链路用登录绑定的业务用户 ID 拦越权。
 - **Agent 内核**：LangChain 1.x `create_agent` + 四个中间件（工具监控/护栏、日志、强制收口、报告提示词兜底切换）。
 - **RAG**：Chroma（cosine）持久化 + md5/切分签名增量同步；空库自愈；按 QA 结构切分（前言 / Q-A 对 / 【块】 / 编号条目），145 chunks，chunk 带 `section`/`unit`/`mode` 元数据；检索是「向量 + BM25 双路召回 → RRF 融合 → gte-rerank-v2 重排 → min_score 无证据兜底」。
 - **会话**：`SqliteSaver` + `thread_id`，刷新或重启后可恢复；历史全量回灌（待压缩）。报告/拒答子流程用 `update_state` 写回同一 thread。
@@ -93,10 +96,12 @@ flowchart LR
 | 11 | **工具护栏前置在中间件**，不写进提示词 | 靠系统提示词要求模型少调工具 | 参数校验、预算、重复调用是硬约束，提示词无法保证 | 规则过严会误伤正常调用 | **已实施**：6 次预算、重复成功拦截、失败重试一次、连续拦截注入收口提示 |
 | 12 | **越界请求确定性拒答** | 让模型自行判断是否越界 | 明确的服务边界不该消耗 token，也不该随模型波动 | 规则是启发式，复杂边界仍靠模型 | **已实施**：`scope_router` 先判报告、再判越界；宁可漏判不误伤 |
 | 13 | **会话列表直接读 checkpoint**，不另建 sessions 表 | 新建会话表并在写入时维护；从 trace 反推 | checkpoint 已是会话内容真源，避免两份状态；trace 只有 M5 之后的记录，会漏历史 | 依赖 `checkpoints` 表结构；自定义 thread_id 不展示 | **已实施**：只列 32 位 hex 的前端线程，标题取首条用户消息，按最后写入排序，时间从 UUIDv6 解析；删除时先清 trace 再删 `writes`/`checkpoints`，只接受同一类线程 ID，避免误删评测数据 |
+| 14 | **演示级身份 + thread 归属表**，用 FastAPI 依赖而不是中间件 | 完整登录/角色/权限系统；JWT 无状态令牌；先不做鉴权 | 简历要的是「会话按账号隔离、越权能被拦住」这条可验证的链路，不是产品级账号体系；依赖注入只作用于声明了它的接口，`/health`、`/auth/bootstrap` 与静态页天然公开，不用维护白名单 | 账号写死在配置里；令牌存 SQLite，每次请求一次查库；无刷新令牌与角色 | **已实施**：`server/auth.py` 用 PBKDF2-SHA256（20 万次迭代、16 字节盐、`hmac.compare_digest`）存密码，`secrets.token_urlsafe(32)` 发令牌并带过期时间；`thread_owner` 表首次写入即认领，别人的线程一律 403；不带 `thread_id` 时服务端发 `uuid4().hex`，不再共用 `"default"`（共用会让第一个用户把 default 占下来、其他人全部 403）；启动时把归属表里没有行的旧会话一次性归到 `legacy_owner`，否则开启鉴权后侧栏会变空；`enabled: false` 是评测脚本 / CLI / Streamlit 的逃生门 |
+| 15 | **报告的越权校验放在取数之前**，用登录绑定的业务用户 ID | 只在提示词里要求模型别查别人；取数后再判断 | 隐私边界不能靠模型自觉；判断放在最前面才能做到「零取数、零 token」 | 需要在报告链路里多传一个 `owner_user_id` 参数 | **已实施**：`check_report_owner` 返回拒答文本时直接短路，`tool_calls=[]`、`no_model_call=True`，账本记 `usage_source="none"` 而不是 `"missing"`。参数解析顺序同时改成「显式入参 > 问题里抽的 > 登录绑定 ID > mock 工具」——登录绑定排在 mock 之前是必需的，否则「我的报告」会被 mock 抽到的随机用户号撞上归属校验，变成拒绝自己的查询（实跑发现的 bug，见 `docs/pitfalls.md` P17） |
 
 ## 5. 明确不做
 
-- **不做双 Token 鉴权、MySQL/Redis/Alembic、重型 React 前端**：这些是产品工程量，不是本项目的差异化。
+- **不做双 Token 鉴权、MySQL/Redis/Alembic、重型 React 前端**：这些是产品工程量，不是本项目的差异化。（身份这块后来按最小可用做了一版：单令牌 + SQLite 归属表，只为了把「会话按账号隔离、越权被拦」这条链路变成可验证的，不做刷新令牌、角色与注册。）
 - **不做伪 BM25**：如果引入混合检索，就用真实关键词索引，并在文档里写清实现。（已兑现：`rag/bm25.py` 是自己写的倒排表 + BM25 打分，不是拿向量库相似度冒充。）
 - **不为「看起来完整」保留死代码**：未接通的模块宁可删掉，也不留在仓库里当装饰。
 
@@ -125,7 +130,9 @@ flowchart LR
 9. 报告生成已由确定性流程固定为「取数 1 次 + 写作 1 次」，P50 从 12.5 秒降到 **7.25 秒**；SSE 后首 token 约 0.4–0.8 秒，但完整回答仍需 6–8 秒，要稳定压到 5 秒内需要更快的报告模型或更短模板。
 10. 护栏与越界规则是启发式：复杂越界请求仍可能落到模型；`hard-neg-002/004` 这类“能力边界”问题没有被确定性拦截。
 11. trace 账本是单机 SQLite，多实例部署需要换 Postgres 或接 OpenTelemetry；`answer` 只保留前 8000 字。
-12. 前端没有鉴权、限流与多用户隔离；`thread_id` 由客户端生成，适合本地演示，不适合直接暴露公网。
+12. ~~前端没有鉴权、限流与多用户隔离；`thread_id` 由客户端生成，适合本地演示，不适合直接暴露公网。~~ 鉴权与会话隔离已实施（决策 14/15）：除 `/health`、`/auth/bootstrap`、`/auth/login` 与静态页外都要带 Bearer 令牌，会话按归属过滤，别人的线程 403，报告查别人的用户 ID 直接拒答。剩下的短板是**限流仍没有**，且身份是演示级的（账号写死在 `config/auth.yml`，无注册、无刷新令牌、无角色权限），公网部署前必须改密码或删库重建。
+20. 观测接口只做了「要登录」，没做「按账号隔离」：任何登录用户调 `/traces`、`/trace/{id}`、`/usage` 看到的都是全量数据（实测 alice 登录后 `/usage` 仍显示 8 次请求、12,024 tokens，其中大部分是 demo 产生的）。trace 表里没有 `username` 列，要隔离得先补这一列再改查询，属于下一步而不是本轮范围。
+21. `/chat/stream` 不校验 `thread_id` 的格式（只限制长度 ≤ 64）：传一个非 32 位 hex 的 ID 会照常写入 checkpoint，但 `is_session_thread` 会把它排除在会话列表外，`DELETE /sessions/{id}` 也返回 422，于是留下一条既看不见又删不掉的孤儿线程。归属表同理会多一行。验证脚本用截断的 ID 就造出过一条（已手工清理）。要堵这个口子得在入口按同一套规则校验 thread_id，代价是不能再用 `smoke-qa-1` 这类可读 ID 走 HTTP。
 13. easy negative 复跑 100% 来自确定性规则覆盖（15 题全部命中），不代表开放式边界已解决；hard negative 的严格 pass^3 仍只有 60%。
 14. easy answerable 单次 55/55 通过，完全正确率从 81.82% 提到 **90.91%**（M2 后），仍有 5 题是 partial：多数是「标准答案要点没答全」，不是答错。hard 从 95% 通过率 / 75% 完全正确提到 100% / 95%。
 15. `min_score=0.16` 的可分区间很窄：未被路由拦下的 negative 最高 0.1578，answerable 最低 0.1673，阈值只留了约 4% 余量。换语料、换重排模型都必须重跑 `eval/calibrate_min_score.py`。误判方向是安全的——误拒只会得到固定兜底话术，不会编造，但用户需要重问一次。

@@ -1,0 +1,33 @@
+# 演示级身份配置：只解决「请求是谁发的」「会话属于谁」，不是生产鉴权。
+# 没有刷新令牌、没有角色权限、没有找回密码；账号就是下面这几个演示账号。
+
+# 关掉后所有接口回到无鉴权状态（评测脚本 / CLI / Streamlit 走这条路）。
+enabled: true
+
+# 账号、令牌、会话归属都落在这个库；checkpoints/ 已在 .gitignore 里。
+db_path: checkpoints/auth.sqlite3
+
+# 令牌有效期（小时）。过期即失效，需要重新登录。
+token_ttl_hours: 12
+
+# PBKDF2-SHA256 迭代次数。20 万是演示强度；单测里会传更小的值以免拖慢。
+pbkdf2_iterations: 200000
+
+# 登录功能上线之前产生的会话没有归属；启动时一次性归到这个账号名下，
+# 否则侧栏会变成空的（谁都看不到旧会话）。留空则不迁移。
+legacy_owner: demo
+
+# 登录面板上的提示文案，由 /auth/bootstrap 原样带给前端。
+login_hint: "演示账号 demo / demo1234、alice / alice1234；只用于本地演示，公网部署前请改掉或删库重建。"
+
+# business_user_id 是 data/external/records.csv 里的 4 位用户 ID：
+# 报告链路会用它拦住「查别人使用记录」的请求。
+demo_users:
+  - username: demo
+    display_name: 演示用户
+    password: demo1234
+    business_user_id: "1001"
+  - username: alice
+    display_name: Alice
+    password: alice1234
+    business_user_id: "1002"
