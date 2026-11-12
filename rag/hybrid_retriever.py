@@ -1,8 +1,11 @@
-"""混合召回：向量（语义）+ BM25（字面）双路取候选，再用 RRF 融合排序。
+"""检索管线：向量（语义）+ BM25（字面）双路取候选 → RRF 融合 → 交叉编码器重排。
 
 RRF 只看排名不看分数，天然规避了「余弦相似度和 BM25 分数不在一个量纲」
 的问题；``mode: vector`` 时 BM25 那一路为空，融合结果就等于向量原序，
 所以两种模式共用同一条代码路径，方便评测里做 A/B。
+
+融合只是把两路的候选凑到一起，排序仍然粗糙，所以最后交给重排模型逐条打分，
+再按 ``min_score`` 截掉明显无关的候选（没有证据时返回空，由上层兜底拒答）。
 """
 
 from __future__ import annotations
@@ -44,12 +47,18 @@ class HybridRetriever:
         vector_candidates: int = 20,
         bm25_candidates: int = 20,
         rrf_k: int = 60,
+        reranker=None,
+        rerank_candidates: int = 20,
+        min_score: float = 0.0,
     ):
         self.vector_store = vector_store
         self.mode = mode
         self.vector_candidates = vector_candidates
         self.bm25_candidates = bm25_candidates
         self.rrf_k = rrf_k
+        self.reranker = reranker
+        self.rerank_candidates = rerank_candidates
+        self.min_score = min_score
         self._documents: list[Document] = []
         self._index: BM25Index | None = None
         self._fingerprint: str | None = None
@@ -101,8 +110,31 @@ class HybridRetriever:
         both_paths = sum(1 for mask in seen_in.values() if mask == 3)
         return [documents[key] for key, _ in ordered], both_paths
 
+    def _rerank(self, query: str, pool: list[Document]) -> tuple[list[Document], dict]:
+        """对融合后的候选重排；重排不可用时原样返回，stats 里标明走了哪条路。"""
+        if self.reranker is None or not pool:
+            return pool, {"rerank": "disabled"}
+
+        outcome = self.reranker.rerank(query, [doc.page_content for doc in pool])
+        if outcome is None:
+            return pool, {"rerank": "fallback", "rerank_pool": len(pool)}
+
+        ranked = [(outcome.scores[index], index) for index in outcome.order]
+        kept = [pool[index] for score, index in ranked if score >= self.min_score]
+        stats = {
+            "rerank": "ok",
+            "rerank_model": outcome.model,
+            "rerank_pool": len(pool),
+            "rerank_kept": len(kept),
+            "rerank_top_score": round(ranked[0][0], 4) if ranked else 0.0,
+            "rerank_min_score": self.min_score,
+            "rerank_latency_ms": outcome.latency_ms,
+            "rerank_usage_tokens": outcome.usage_tokens,
+        }
+        return kept, stats
+
     def search(self, query: str, k: int) -> HybridSearchResult:
-        """召回并融合，返回前 k 条；候选数至少为 k，避免评测调大 k 时召不满。"""
+        """召回 → 融合 → 重排，返回前 k 条；候选数至少为 k，避免评测调大 k 时召不满。"""
         self._ensure_index()
         vector_limit = max(self.vector_candidates, k)
         bm25_limit = max(self.bm25_candidates, k)
@@ -116,6 +148,9 @@ class HybridRetriever:
         bm25_ms = (perf_counter() - started) * 1000
 
         fused, overlap = self._fuse([vector_docs, bm25_docs])
+        pool = fused[: max(self.rerank_candidates, k)]
+        documents, rerank_stats = self._rerank(query, pool)
+
         stats = {
             "mode": self.mode,
             "vector_candidates": len(vector_docs),
@@ -127,5 +162,6 @@ class HybridRetriever:
             "index_fingerprint": self._fingerprint,
             "vector_latency_ms": round(vector_ms, 2),
             "bm25_latency_ms": round(bm25_ms, 2),
+            **rerank_stats,
         }
-        return HybridSearchResult(documents=fused[:k], stats=stats)
+        return HybridSearchResult(documents=documents[:k], stats=stats)

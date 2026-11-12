@@ -4,6 +4,7 @@ from langchain_core.documents import Document
 
 from rag.bm25 import BM25Index, tokenize
 from rag.hybrid_retriever import HybridRetriever, _corpus_fingerprint
+from rag.reranker import RerankOutcome
 
 
 def make_doc(source: str, text: str) -> Document:
@@ -159,6 +160,88 @@ class HybridRetrieverTest(unittest.TestCase):
         ):
             self.assertIn(key, stats)
         self.assertEqual(stats["index_fingerprint"], _corpus_fingerprint(CORPUS))
+
+
+class StubReranker:
+    """假重排器：按给定的 (下标, 分数) 返回，或返回 None 模拟调用失败。"""
+
+    def __init__(self, ranked=None, outcome=None):
+        self._ranked = ranked
+        self._outcome = outcome
+        self.calls: list[tuple[str, int]] = []
+
+    def rerank(self, query: str, documents: list[str]):
+        self.calls.append((query, len(documents)))
+        if self._outcome is not None:
+            return self._outcome
+        if self._ranked is None:
+            return None
+        scores = [0.0] * len(documents)
+        for index, score in self._ranked:
+            scores[index] = score
+        order = [index for index, _ in self._ranked]
+        return RerankOutcome(
+            scores=scores, order=order, model="stub-rerank", latency_ms=1.5, usage_tokens=7
+        )
+
+
+class RerankStageTest(unittest.TestCase):
+    def setUp(self):
+        # 向量路的顺序故意是「答案在最后」，靠重排把它拉到首位。
+        self.vector_order = [CORPUS[1], CORPUS[2], CORPUS[3], CORPUS[0]]
+        self.store = FakeVectorStore(CORPUS, self.vector_order)
+
+    def test_rerank_reorders_fused_pool(self):
+        reranker = StubReranker(ranked=[(3, 0.95), (0, 0.2), (1, 0.1), (2, 0.05)])
+        retriever = HybridRetriever(
+            self.store, mode="vector", vector_candidates=4, reranker=reranker
+        )
+        result = retriever.search("E05", k=2)
+        self.assertEqual(result.documents[0], CORPUS[0])
+        self.assertEqual(result.stats["rerank"], "ok")
+        self.assertEqual(result.stats["rerank_top_score"], 0.95)
+        self.assertEqual(result.stats["rerank_usage_tokens"], 7)
+        self.assertEqual(reranker.calls[0][1], 4)
+
+    def test_min_score_drops_weak_candidates(self):
+        reranker = StubReranker(ranked=[(3, 0.4), (0, 0.2), (1, 0.01), (2, 0.0)])
+        retriever = HybridRetriever(
+            self.store, mode="vector", vector_candidates=4, reranker=reranker, min_score=0.05
+        )
+        result = retriever.search("E05", k=4)
+        self.assertEqual(result.documents, [CORPUS[0], CORPUS[1]])
+        self.assertEqual(result.stats["rerank_kept"], 2)
+
+    def test_all_below_threshold_returns_empty(self):
+        reranker = StubReranker(ranked=[(0, 0.01), (1, 0.0)])
+        retriever = HybridRetriever(
+            self.store, mode="vector", vector_candidates=4, reranker=reranker, min_score=0.3
+        )
+        result = retriever.search("随便问点别的", k=3)
+        self.assertEqual(result.documents, [])
+        self.assertEqual(result.stats["rerank_kept"], 0)
+
+    def test_rerank_failure_falls_back_to_fusion_order(self):
+        retriever = HybridRetriever(
+            self.store, mode="vector", vector_candidates=4, reranker=StubReranker()
+        )
+        result = retriever.search("E05", k=4)
+        self.assertEqual(result.documents, self.vector_order)
+        self.assertEqual(result.stats["rerank"], "fallback")
+
+    def test_disabled_when_no_reranker(self):
+        retriever = HybridRetriever(self.store, mode="vector", vector_candidates=4)
+        result = retriever.search("E05", k=2)
+        self.assertEqual(result.stats["rerank"], "disabled")
+        self.assertEqual(result.documents, self.vector_order[:2])
+
+    def test_pool_size_is_at_least_k(self):
+        reranker = StubReranker(ranked=[(0, 0.9)])
+        retriever = HybridRetriever(
+            self.store, mode="vector", vector_candidates=4, reranker=reranker, rerank_candidates=2
+        )
+        retriever.search("E05", k=4)
+        self.assertEqual(reranker.calls[0][1], 4)
 
 
 if __name__ == "__main__":

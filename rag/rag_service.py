@@ -1,5 +1,6 @@
 from agent.scope_router import OUT_OF_SCOPE_ANSWER, is_out_of_scope_query
 from rag.hybrid_retriever import HybridRetriever
+from rag.reranker import DashScopeReranker
 from rag.vector_store import VectorStoreService
 from utils.config_handler import chroma_conf, rag_conf
 from utils.prompt_loader import load_rag_prompts
@@ -10,6 +11,13 @@ from langchain_core.documents import Document
 
 # 检索管线的可调参数：mode=vector 时退化成纯向量召回，方便评测做 A/B。
 _retrieval_conf = rag_conf.get("retrieval") or {}
+_rerank_conf = _retrieval_conf.get("rerank") or {}
+
+
+def _build_reranker() -> DashScopeReranker | None:
+    if not _rerank_conf.get("enabled", False):
+        return None
+    return DashScopeReranker(model=_rerank_conf.get("model", "gte-rerank-v2"))
 
 
 class RagSummarizeService(object):
@@ -21,6 +29,9 @@ class RagSummarizeService(object):
             vector_candidates=int(_retrieval_conf.get("vector_candidates", 20)),
             bm25_candidates=int(_retrieval_conf.get("bm25_candidates", 20)),
             rrf_k=int(_retrieval_conf.get("rrf_k", 60)),
+            reranker=_build_reranker(),
+            rerank_candidates=int(_rerank_conf.get("candidates", 20)),
+            min_score=float(_rerank_conf.get("min_score", 0.0)),
         )
         self.prompt_text = load_rag_prompts()
         self.prompt_template = PromptTemplate.from_template(self.prompt_text)
