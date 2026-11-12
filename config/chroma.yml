@@ -6,6 +6,15 @@ data_path: data
 # PDF 仅作本地参考：内容已由两份 txt 覆盖，且授权状态不适合公开入库。
 allow_knowledge_file_type: ['txt']
 
+# 文本检索用 cosine；启动时发现旧集合是 l2 会重建并重新灌库。
+distance_space: cosine
+
+# qa_aware：按问答对 / 错误码块 / 编号清单切分（保留小节与编号元数据）
+# recursive：按固定字数硬切，仅作为回退
+split_mode: qa_aware
+# 一个 chunk 的字数上限；超长的清单会被拆成多份，每份都重复标题
+max_unit_chars: 600
+
 chunk_size: 200
 chunk_overlap: 20
 # 必须用双引号：YAML 单引号不会把 \n 解析成换行
