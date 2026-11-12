@@ -1,5 +1,6 @@
 import json
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from observability.store import TraceStore
 from server.app import create_app
 from server.auth import AuthStore
 from server.chat_runner import ChatRunner
+from server.rate_limit import SlidingWindowLimiter
 
 DEMO_USERS = [
     {
@@ -422,6 +424,91 @@ class AuthApiTest(_AppTestCase):
         )
         self.assertIsNone(auth.thread_owner(thread_id))
         self.assertIsNone(self.agent.owner_user_ids[-1])
+
+
+class RateLimitApiTest(_AppTestCase):
+    """``/chat/stream`` 的按用户限流：超额返回 429 + ``Retry-After``。"""
+
+    def use_limiter(self, **kwargs) -> None:
+        """换上受控的限流器：默认是 20 次/分钟，单测里既等不起也不想等。"""
+        self.client.__exit__(None, None, None)
+        self.app = create_app(
+            runner=self.runner,
+            store=self.store,
+            auth=self.auth,
+            limiter=SlidingWindowLimiter(**kwargs),
+        )
+        self.client = TestClient(self.app)
+        self.client.__enter__()
+        self.client.headers.update({"Authorization": f"Bearer {self.token}"})
+
+    def ask(self, thread_id: str, token: str | None = None):
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        return self.client.post(
+            "/chat/stream", json={"query": "滤网怎么拆", "thread_id": thread_id},
+            headers=headers,
+        )
+
+    def test_third_request_is_throttled(self):
+        self.use_limiter(enabled=True, window_seconds=60, max_requests=2)
+
+        self.assertEqual(self.ask("rl-1").status_code, 200)
+        self.assertEqual(self.ask("rl-1").status_code, 200)
+        blocked = self.ask("rl-1")
+
+        self.assertEqual(blocked.status_code, 429)
+        self.assertEqual(blocked.headers["Retry-After"], "60")
+        self.assertIn("请求太频繁", blocked.json()["detail"])
+
+    def test_throttled_request_leaves_no_trace(self):
+        self.use_limiter(enabled=True, window_seconds=60, max_requests=1)
+
+        self.ask("rl-owned")
+        blocked = self.ask("rl-fresh")
+
+        self.assertEqual(blocked.status_code, 429)
+        # 认领线程是写操作，被限流的请求不该在归属表里留下痕迹。
+        self.assertIsNone(self.auth.thread_owner("rl-fresh"))
+        self.assertEqual(self.agent.owner_user_ids, ["1001"])
+        # 也不该产生 trace：请求根本没走到 runner。
+        self.assertEqual(
+            [t["thread_id"] for t in self.store.list_traces(limit=20)], ["rl-owned"]
+        )
+
+    def test_budget_is_per_account(self):
+        self.use_limiter(enabled=True, window_seconds=60, max_requests=1)
+        alice_token = self.login("alice", "alice1234")
+
+        self.assertEqual(self.ask("rl-demo").status_code, 200)
+        self.assertEqual(self.ask("rl-demo").status_code, 429)
+        self.assertEqual(self.ask("rl-alice", token=alice_token).status_code, 200)
+
+    def test_read_only_endpoints_are_not_throttled(self):
+        self.use_limiter(enabled=True, window_seconds=60, max_requests=1)
+        self.claim("d" * 32, "demo")
+
+        self.assertEqual(self.ask("rl-1").status_code, 200)
+        self.assertEqual(self.ask("rl-1").status_code, 429)
+        # 只有会调模型的 /chat/stream 计数；查询类接口被限流会让页面直接不可用。
+        self.assertEqual(self.client.get("/health").status_code, 200)
+        self.assertEqual(self.client.get("/sessions").status_code, 200)
+        self.assertEqual(self.client.get(f"/history/{'d' * 32}").status_code, 200)
+        self.assertEqual(self.client.get("/usage").status_code, 200)
+
+    def test_disabled_limiter_never_throttles(self):
+        self.use_limiter(enabled=False, window_seconds=60, max_requests=1)
+
+        for _ in range(10):
+            self.assertEqual(self.ask("rl-off").status_code, 200)
+
+    def test_window_slides_in_real_time(self):
+        # 用最短的窗口跑一次真实计时，确认接的是 monotonic 而不是某个不会走的假时钟。
+        self.use_limiter(enabled=True, window_seconds=0.2, max_requests=1)
+
+        self.assertEqual(self.ask("rl-slide").status_code, 200)
+        self.assertEqual(self.ask("rl-slide").status_code, 429)
+        time.sleep(0.25)
+        self.assertEqual(self.ask("rl-slide").status_code, 200)
 
 
 if __name__ == "__main__":

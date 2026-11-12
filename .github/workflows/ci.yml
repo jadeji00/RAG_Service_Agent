@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  offline-checks:
+    name: 离线检查（单测 + 数据集校验）
+    runs-on: ubuntu-latest
+    env:
+      # model/factory.py 在导入那一刻就构造 ChatTongyi 和 DashScopeEmbeddings，
+      # 缺这个变量会直接 ValidationError，连不调网络的单测都跑不起来。
+      # 这是个占位值，不是真密钥：下面所有步骤都不发任何模型请求。
+      DASHSCOPE_API_KEY: sk-ci-placeholder-not-a-real-key
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 单元测试
+        run: python -m unittest discover -s tests -v
+
+      - name: easy 数据集校验（80 题）
+        run: python eval/run_eval.py --validate-only
+
+      - name: hard 数据集校验（25 题）
+        run: python eval/run_answer_eval.py --validate-only --dataset eval/dataset_hard.jsonl
+
+      - name: 全量语法编译
+        run: python -m compileall -q agent rag server eval observability model utils tests
+
+# 没进 CI 的部分（都要调真实模型，跑一次就烧配额，且需要真密钥）：
+#   - 检索基线   python eval/run_eval.py
+#   - 回答级基线 python eval/run_answer_eval.py [--repeat 3]
+#   - 阈值标定   python eval/calibrate_min_score.py
+# 这三项作为发版前的人工回归，见 docs/testing.md 第 4、8 节。

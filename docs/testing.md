@@ -29,6 +29,7 @@
 | 事件流单测 | `tests/test_chat_runner.py` | SSE 事件序列、trace 落库、错误/取消、缺用量不伪造成本 | 否（fake agent） | 毫秒级 |
 | API 单测 | `tests/test_api.py` | health、chat SSE、会话列表/历史/删除、trace、usage、503 not_ready；登录态、401/403、会话按归属过滤、`owner_user_id` 透传 | 否（fake runner） | 毫秒级 |
 | 身份单测 | `tests/test_auth.py` | 密码哈希加盐与校验、畸形哈希拒绝、账号种子幂等、`demo_users()` 不含密码、环境变量覆盖密码、登录/登出/过期令牌、会话认领与归属过滤、旧会话收养、关闭鉴权仍可用 | 否 | 毫秒级 |
+| 限流单测 | `tests/test_rate_limit.py` + `tests/test_api.py::RateLimitApiTest` | 滑动窗口剪枝与边界、`Retry-After` 随时间递减、**被拒的请求不记账**、key 之间互不占用额度、关闭与额度为 0 时不限流、陈旧 key 清扫、`auth.yml` 配置装配；接口级 429 + 只读接口不计数 + 被限流的请求不落 trace + 窗口真实滑出后恢复 | 否（假时钟 / fake runner） | 毫秒级 |
 | pass^k 单测 | `tests/test_passk.py` | 严格通过、至少一次、波动题、repeat=1 | 否 | 毫秒级 |
 | 切分单测 | `tests/test_chunking.py` | QA 对/错误码块/编号列表不切断、preamble 归属、元数据、切分签名随参数变化、真实语料零丢行 | 否 | 毫秒级 |
 | 混合检索单测 | `tests/test_hybrid_retrieval.py` | 分词（ASCII + CJK 单/双字）、BM25 打分与截断、RRF 融合、vector 模式退化、索引重建、stats 字段 | 否（fake 向量库） | 毫秒级 |
@@ -38,6 +39,7 @@
 | 检索端到端 | `eval/run_eval.py` | 真实 embedding + Chroma + BM25 + 重排的 Recall/MRR/延迟 | 是（embedding + 重排） | 约 20 秒 / 套 |
 | 回答级端到端 | `eval/run_answer_eval.py` | easy 55+15+10 或 hard 20+5；correctness / faithfulness / 拒答 / 字段完整性 | 是 | easy 约 5 分钟，hard 约 3 分钟 |
 | pass^k | `eval/run_answer_eval.py --repeat k` | 同题独立跑 k 次，严格 pass^k / 至少一次 / 波动题 | 是 | 约 k 倍回答级耗时 |
+| CI | `.github/workflows/ci.yml` | 上面所有「不调模型」的层合起来跑一遍：263 个单测、easy 80 题与 hard 25 题的数据集校验、全量 `compileall` | 否（占位 `DASHSCOPE_API_KEY`） | 约 1–2 分钟，主要在装依赖 |
 
 **为什么把单测和端到端分开**：单测不依赖 API Key、网络和向量库，提交前可以随时跑；端到端会调用 embedding，结果受数据和模型影响，单独作为基线命令执行。
 
@@ -250,6 +252,17 @@
 
 设计取舍：`load_history` 的用例用 `object.__new__(ReactAgent)` 绕过 `__init__`（真构造会打开 Chroma 并灌库），只注入一个实现 `get_state` 的 `FakeGraph`。`RagServiceCitationTest` 沿用 `test_rag_service.py` 的做法：构造真服务对象但把 `chain` 换成 `StubChain`、把 `retrieve_with_stats` 换成返回固定文档的 lambda；`tearDown` 里用 `__dict__.pop` 删除实例属性而不是赋回，否则实例属性会一直遮住类上的真方法、污染后面的用例。
 
+### 3.14 限流单测（16 个）
+
+`tests/test_rate_limit.py` 10 个纯逻辑用例 + `tests/test_api.py::RateLimitApiTest` 6 个接口用例，**全部离线**。
+
+| 分组 | 关键验证点 |
+|---|---|
+| `SlidingWindowLimiterTest` | 额度用完才拒、`remaining` 逐次递减；窗口滑过后额度回来；`retry_after` 等于「最老那次命中滑出窗口还要多久」并随时间递减（t+10 → 50、t+59 → 1）；不同 key 互不占额度；**被拒的请求不记账**——一个每 5 秒重试的死循环不会把自己永久锁死；`enabled=false` 与 `max_requests=0` 都等于不限流；`reset()` 能清单个 key 或全部；key 数超过 `_MAX_TRACKED_KEYS` 后清扫掉已滑出窗口的旧 key；默认实例读到的是 `auth.yml` 里的 20 次 / 60 秒（配置没接上时会静默变成「不限流」，这条就是防这个） |
+| `RateLimitApiTest` | 超额返回 **429** 且带 `Retry-After` 头、body 是 JSON（前端要能 `response.json()`）、`detail` 是「请求太频繁了，请 N 秒后再试」这种人话而不是 `HTTP 429`；**额度按账号算**（demo 被挡时 alice 照常放行）；**只读接口不计数**（`/health`、`/sessions`、`/history`、`/usage` 在被限流时仍是 200）；被限流的请求**不落 trace、不认领线程**（检查点放在认领之前）；`enabled=false` 时连发 10 次全过；用 `window_seconds=0.2` 跑一次**真实计时**，确认接的是会走动的 `monotonic` 而不是某个永远不变的假时钟 |
+
+设计取舍：限流逻辑全靠时间，所以单测注入 `FakeClock`（手动 `advance`）而不是 `time.sleep`，10 个用例跑完 8 毫秒；接口级用例则反过来，专门留一条 0.2 秒窗口的真计时用例，防止「假时钟下全绿、线上窗口根本不滑」这类只在真实时间下才暴露的问题。接口用例用 `use_limiter()` 重建 app 并注入受控限流器，因为默认配置是 20 次/分钟——单测里既打不满也不想等。
+
 ## 4. 怎么运行
 
 ```bash
@@ -258,6 +271,9 @@ python eval/run_eval.py --validate-only
 
 # 2) 纯函数与数据集单测，不需要 API Key
 python -m unittest discover -s tests -v
+#    注意：不要加 `-t .`，会报 ImportError: Start directory is not importable。
+#    如果环境里没有 DASHSCOPE_API_KEY，先给个占位值——model/factory.py 在导入
+#    那一刻就构造 ChatTongyi，缺变量会直接 ValidationError（CI 里就是这么做的）。
 
 # 3) 冒烟：只跑前 10 道可答题
 python eval/run_eval.py --limit 10
@@ -294,6 +310,8 @@ python eval/calibrate_min_score.py
 
 > A/B 靠改配置而不是加命令行开关：管线只有一条代码路径，`mode=vector` 时 BM25 路返回空列表、RRF 融合退化成向量原序，因此三档对比不会引入「测试专用分支」。改完记得把配置恢复成生产值。
 
+> 第 1) 步（两套 `--validate-only`）和第 2) 步（全部单测）已经接进 `.github/workflows/ci.yml`，push 到 main 与 PR 都会自动跑，另加一步全量 `compileall`。第 3)–10) 步都要调真实模型（烧配额、需要真密钥、结果还得人工读哪道题掉在哪一层），所以留在发版前人工回归，不进 CI。
+
 结果写入：
 
 - `eval/results/baseline.json`：检索聚合指标 + 逐题排名 + Top 来源；
@@ -319,7 +337,8 @@ python eval/calibrate_min_score.py
 | 项 | 结果 |
 |---|---|
 | 数据集校验 | `VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`，0 个错误 |
-| 单元测试 | **247 个全部通过，约 3 秒**（M2 前 84 个；M2 后 126 个：新增切分 8、混合检索 20、重排 9、RAG 服务 5；身份上线后 160 个：新增 `test_auth.py` 17、`AuthApiTest` 10、报告归属 4、报告参数补齐 3；历史压缩上线后 211 个：新增 `test_history_compressor.py` 51；引用溯源上线后 247 个：新增 `test_citations.py` 22、`CitationCaptureTest` 7、`RagServiceCitationTest` 3、`ChatRunnerCitationTest` 3、重排副本回归 1） |
+| 单元测试 | **263 个全部通过，约 7 秒**（M2 前 84 个；M2 后 126 个：新增切分 8、混合检索 20、重排 9、RAG 服务 5；身份上线后 160 个：新增 `test_auth.py` 17、`AuthApiTest` 10、报告归属 4、报告参数补齐 3；历史压缩上线后 211 个：新增 `test_history_compressor.py` 51；引用溯源上线后 247 个：新增 `test_citations.py` 22、`CitationCaptureTest` 7、`RagServiceCitationTest` 3、`ChatRunnerCitationTest` 3、重排副本回归 1；限流上线后 263 个：新增 `test_rate_limit.py` 10、`RateLimitApiTest` 6） |
+| CI | `.github/workflows/ci.yml` 的四条命令在本地按 CI 的方式跑过一遍（占位 `DASHSCOPE_API_KEY`、同样的参数）：263 个单测 OK、`VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`、`compileall` 退出码 0。**尚未在 GitHub Actions 上真正跑过一次**——仓库还没有配 remote，见 5.17 的未测项 |
 | 向量库 | **145 个向量**、145 个唯一 ID、145 段唯一内容、5 个来源/md5 组合、`hnsw:space=cosine`、`split_sig=95ec9f1c38e8`（M2 前：66 个向量、默认 L2） |
 | 索引幂等 | 同一语料第二次 `load_document()` 全部跳过，不重新 embedding、不产生重复 ID |
 | easy 回答级评测 | 80 题全部执行，生成与判分错误 0（M2 后复跑见 5.13） |
@@ -778,11 +797,50 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 
 **未测 / 待补**：
 
-- **视觉层面没有像素级检查**：宿主视口是 0×0（`window.innerWidth === 0`），`click` 与 `take_screenshot` 直接报 `NATIVE_BROWSER_VIEWPORT_UNAVAILABLE`，CSS 过渡也永远不走帧——展开箭头的 `transform` 读出来是单位矩阵，一度被我误判成「样式没生效」，最后靠内联 `transition:none` 强制取值才确认 `rotate(90deg)` 是对的（见 `docs/pitfalls.md` P22）。**面板的观感、间距、窄屏/移动端布局都属于未验证项。**
+- **视觉层面没有像素级检查**：宿主视口是 0×0（`window.innerWidth === 0`），`click` 与 `take_screenshot` 直接报 `NATIVE_BROWSER_VIEWPORT_UNAVAILABLE`，CSS 过渡也永远不走帧——展开箭头的 `transform` 读出来是单位矩阵，一度被我误判成「样式没生效」，最后靠内联 `transition:none` 强制取值才确认 `rotate(90deg)` 是对的（见 `docs/pitfalls.md` P24）。**面板的观感、间距、窄屏/移动端布局都属于未验证项。**
 - **句级引用映射没有做**：现在只能回答「这条回答用了这 3 段」，不能回答「这句话出自第几段」。要做就得改生成提示词让模型输出角标，那会动到 M2 的回答级基线，属于另一次评测投入。
 - **`MAX_SOURCES=12` 的截断只在单测里覆盖**：实跑最多一轮 3 条（k=3），截断分支没有被真实流量打到。
 - **artifact 给 checkpoint 增了体积**：一轮一条引用约 0.5~1 KB，长会话下 checkpoint 会持续变大。只做了定性观测，没有量化百轮会话的膨胀曲线，也没有做 artifact 的淘汰策略。
 - **重排降级时的分数缺失**：`rerank=fallback` 或 `disabled` 时后端给 `score=null`，界面按「不显示分数」处理（单测覆盖），但没有真的把重排关掉跑一遍端到端确认。
+
+### 5.17 按用户限流与 CI（2026-11-13）
+
+**测什么**：限流要证明四件事——① 超额真的返回 `429` 而不是把请求放过去，② `Retry-After` 是**准确的**（不是随手写个 60），③ 额度**按账号**算且**只读接口不计数**（被限流的人还得能翻历史、看用量），④ 窗口滑过去之后**自动恢复**，不需要重启服务。CI 那边要证明的是：换一台干净的 Linux 机器、只装 `requirements.txt`、给一个占位 Key，离线的那一半检查能全绿。
+
+**怎么测**：三层。
+
+1. **离线单测 16 个**（`tests/test_rate_limit.py` 10 + `tests/test_api.py::RateLimitApiTest` 6，见 3.14）：限流逻辑注入 `FakeClock` 手动推进时间，接口层用 `TestClient` 打真的 FastAPI 路由。
+2. **端到端实跑**（`log/verify_rate_limit.py`，真 uvicorn + 真 HTTP + 真登录）：把 `config/auth.yml` 的 `rate_limit` **临时**改成 `max_requests: 1` / `window_seconds: 30` 再重启服务（默认 20 次/分钟的话要打满 20 发才触发，而每发都是一次真实模型调用），然后按剧本走：demo 第一发放行 → 第二发应当 429 → alice 应当不受影响 → 四个只读接口应当全是 200 → 每 5 秒轮询一次直到恢复。触发限流用的都是**越界题**（路由确定性拒答，不检索、不调主模型，0.1 秒返回），限流器并不在乎问题内容，它只在请求进入时计数。跑完自动删掉自己建的 9 个 thread，报告写 UTF-8 文件 `log/verify_rate_limit_report.md`，控制台只输出 ASCII。**验证结束把配置改回 60/20 并重启**，再连发 3 发确认全部 200（若配置没改回来，第 2 发就会是 429）。
+3. **CI 命令本地预演**：用 CI 里同样的环境变量（`DASHSCOPE_API_KEY=sk-ci-placeholder-not-a-real-key`）和同样的参数，把 `.github/workflows/ci.yml` 的四条命令在本地跑一遍。
+
+**结果**：
+
+| 项 | 观测 |
+|---|---|
+| 单元测试 | 263 个全通过（限流占 16 个），约 7 秒 |
+| 端到端 | `EXIT=0`、`PROBLEMS 0`；`FIRST 200 SECOND 429 ALICE 200` |
+| 429 响应 | `retry-after: 30`、`content-type: application/json`、body `{"detail":"请求太频繁了，请 30 秒后再试"}`——是 JSON 而不是 SSE 流，前端才能 `response.json()` |
+| `Retry-After` 递减 | 每 5 秒轮询一次：`t+5s → 25`、`t+10s → 20`、`t+15s → 15`、`t+20s → 10`、`t+25s → 5`、**`t+31s → 200`**（恢复）。倒计时准确对得上窗口，不是固定值 |
+| 只读接口 | demo 已被限流时 `/health`、`/sessions`、`/usage`、`/auth/me` 全部 200 |
+| 副作用 | 被限流的那个 thread `/history` 返回 `messages=[]`，归属表没有行、trace 库没有记录——检查点放在「认领线程」之前 |
+| 前端 | 界面上气泡里显示「请求太频繁了，请 18 秒后再试」，**并且把刚问的问题还回了输入框**（`inputValue` 与提问一致），等窗口过去直接重发即可；重发那一轮正常出答案，`#28` 的「引用来源 3 条」面板照常渲染（无回归）；控制台除浏览器自己那条 429 资源日志外无 JS 报错 |
+| 配置恢复 | 改回 20 次/60 秒后重启，连发 3 发全是 200 |
+| CI 四条命令 | 263 个单测 `OK`、`VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`、`compileall` 退出码 0（都在只给占位 Key 的环境下跑的） |
+| 占位 Key 的必要性 | 把 `DASHSCOPE_API_KEY` 从环境里去掉后 `import model.factory` 直接 `ValidationError: Did not find dashscope_api_key`——**连一个不发请求的单测都跑不起来**，所以 CI 必须给占位值 |
+
+**为什么这么测**：限流最容易写错的地方不是「挡住」，而是**挡错了对象**——把只读接口一起挡住（用户被限流后连历史都翻不了，体验比不限流更差）、把两个账号算进同一个桶（一个人跑脚本，全公司都用不了）、以及 `Retry-After` 给个固定值糊弄（客户端不知道到底该等多久）。所以实跑剧本的重点是 alice 那一发和四个只读接口，429 本身反而是最容易的部分。倒计时那一串数字（25→20→15→10→5→恢复）是滑动窗口区别于固定窗口的直接证据：固定窗口会一直返回同一个值，然后在窗口边界突然放行 2 倍流量。临时改配置再改回来这一步很关键——**默认 20 次/分钟意味着验证要真的打 20 发模型调用**，而改成 1 次/30 秒后只需要 2 发越界题（其中 1 发还是 429，不花钱）。
+
+**用途**：面试问「这个服务直接放公网会怎样」时，可以答「已经有一层按账号的滑动窗口限流，超额 429 + 准确的 Retry-After，只读接口不计数，被限流的请求不落 trace；但计数在进程内存里，多 worker 会各算各的、重启即清零，要跨实例得换 Redis」——既说清做了什么，也说清边界在哪。
+
+**未测 / 待补**：
+
+- **CI 从未在 GitHub Actions 上真正跑过**：这个仓库**还没有配 remote**（`git remote -v` 为空），workflow 文件只是写好了、四条命令在本地按同样的环境和参数预演通过。要看到绿色勾，得先推到 GitHub。这是当前最明确的一个缺口。
+- **只跑 ubuntu-latest**：没有 Windows/macOS 矩阵。代码里没有平台相关分支（`rag/citations.py` 的路径归一化同时处理 `\` 与 `/`），本地开发机是 Windows 且全套件通过，但没有 CI 层面的交叉验证。
+- **多 worker / 多实例没测**：限流计数是进程内存，`uvicorn --workers 2` 时实际上限变成 40 次/分钟。这一条是设计取舍（决策 18）里写明的，但没有实测数据。
+- **并发竞态没测**：`hit()` 用 `threading.Lock` 保护，但没有写多线程压测用例去验证竞态；单进程 + FastAPI 同步路由下实际是串行进入的。
+- **鉴权关闭时的按 IP 限流没实测**：单测覆盖了 key 的选择逻辑，但没有真的把 `enabled: false` 起一个服务、从两个不同 IP 打一遍（本机也造不出两个源 IP）。
+- **陈旧 key 清扫只在单测里跑到**：`_MAX_TRACKED_KEYS=4096` 的清扫分支需要 4097 个不同 key，真实流量下要很久才会碰到。
+- **验证脚本没有入库**：`log/` 整个被 `.gitignore` 忽略，所以 `log/verify_rate_limit.py`、`log/verify_citations.py`、`log/verify_history.py` 这几份实跑剧本**只存在于这台机器上**，clone 仓库的人复跑不了。文档里凡是提到它们的地方都应当按「本地脚本」理解。
 
 ## 6. 这些测试有什么用
 
@@ -790,7 +848,7 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 2. **改动后能证明是否变好，也能证明哪一步没用。** M2 的切分、混合召回、重排各跑一次同一套 easy + hard 题，才敢说「切分单独上会让 Span@3 掉 7 个百分点、重排才是主要杠杆」（5.13）；只看最终分是得不出这个结论的。
 3. **失败能定位到层。** hard 的 Source@3 是 100% 但 Span@8 只有 90%，问题在片段级；`qa-042` 因此能用一次切分改动修好；报告字段完整但忠实度不足，问题在生成而不是取数；pass^k 波动题则说明单次通过不可靠。
 4. **面试有证据。** 题量、标注口径、指标定义、复现命令、失败案例都能当场打开；hard split 与 pass^k 能回答“是不是只会背原句、是不是碰巧通过”；分阶段结果文件能回答“这个提升到底是哪一步带来的”。
-5. **防止回归。** 改配置或换模型后，先跑两套 `--validate-only` 和 247 个单测，再跑检索与回答级基线；换语料或换重排模型还要重跑 `calibrate_min_score.py`，避免“修一个坏三个”。
+5. **防止回归。** 改配置或换模型后，先跑两套 `--validate-only` 和 263 个单测（push 上去 CI 会自动跑这三样），再跑检索与回答级基线；换语料或换重排模型还要重跑 `calibrate_min_score.py`，避免“修一个坏三个”。
 
 ## 7. 设计取舍与边界
 
@@ -820,5 +878,6 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 4. **扩大 hard split**：25 题能暴露问题，但样本仍小；下一步加入更多跨章节组合、近似干扰项和错别字问法，并把越界路由准确率纳入同一套基线。
 5. **越界边界补强**：`neg-004` / `neg-009` 已由确定性拒答覆盖（见 5.10），`hard-neg-001/002/003/004/005` 已由无证据兜底覆盖（见 5.13）；剩下的是「知识库里有相邻内容、但答案其实不存在」这类灰区，仍靠模型判断。
 6. **重排可观测性**：~~重排分低于阈值时把 `top_score` 写进 trace span~~（已完成，`rag:retrieve` span 现在带 `rerank_top_score` 与 `rerank` 状态，见 5.16）；剩下的是给 `rerank=fallback` 加计数与告警，便于事后判断是「真没证据」还是「重排挂了」。
-7. **服务化收尾**：~~给 `/chat/stream` 加登录态与 `thread_id` 归属校验~~（已完成，见 5.14）；~~会话历史压缩~~（已完成，见 5.15）；~~回答引用溯源~~（已完成，见 5.16）；剩下按用户限流、CI、trace 换 Postgres 或接 OpenTelemetry、观测数据按账号隔离、补浏览器端自动化测试（当前浏览器验证靠手工驱动 DOM，截图能力受限于宿主视口）。
-8. 把两套 `--validate-only` + 247 个单测 + `calibrate_min_score.py` 接进 CI，检索与回答级基线作为人工回归。
+7. **服务化收尾**：~~给 `/chat/stream` 加登录态与 `thread_id` 归属校验~~（已完成，见 5.14）；~~会话历史压缩~~（已完成，见 5.15）；~~回答引用溯源~~（已完成，见 5.16）；~~按用户限流~~（已完成，见 5.17）；剩下把限流计数换成共享存储（多 worker 才准）、trace 换 Postgres 或接 OpenTelemetry、观测数据按账号隔离、补浏览器端自动化测试（当前浏览器验证靠手工驱动 DOM，截图能力受限于宿主视口）。
+8. ~~把两套 `--validate-only` + 单测接进 CI~~（已完成，`.github/workflows/ci.yml` 覆盖 263 个单测 + 两套数据集校验 + 全量编译，见 5.17）；**但仓库还没有 remote，workflow 从未在 GitHub Actions 上真正执行过**——推上去看到第一次绿色才算落地。`calibrate_min_score.py` 与检索/回答级基线要调真实模型，仍作为人工回归。
+9. **把实跑剧本入库**：`log/` 被 `.gitignore` 忽略，`verify_history.py` / `verify_citations.py` / `verify_rate_limit.py` 这几份端到端验证脚本只在本地，clone 仓库的人复跑不了。挪到一个受版本控制的目录（例如 `tools/verify/`）之前要先确认脚本里没有硬编码的演示密码之外的敏感值。

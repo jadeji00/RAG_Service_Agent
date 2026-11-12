@@ -15,7 +15,7 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -24,6 +24,7 @@ from agent.session_index import is_session_thread, list_checkpoint_threads
 from observability.store import TraceStore
 from server.auth import ANONYMOUS_USER, AuthStore, User
 from server.chat_runner import ChatRunner
+from server.rate_limit import SlidingWindowLimiter
 from server.sse import encode_sse
 from utils.logger_handler import logger
 
@@ -69,9 +70,11 @@ def create_app(
     runner: ChatRunner | None = None,
     store: TraceStore | None = None,
     auth: AuthStore | None = None,
+    limiter: SlidingWindowLimiter | None = None,
 ) -> FastAPI:
     trace_store = store or TraceStore()
     auth_store = auth if auth is not None else AuthStore()
+    rate_limiter = limiter if limiter is not None else SlidingWindowLimiter()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -104,6 +107,7 @@ def create_app(
     )
     app.state.store = trace_store
     app.state.auth = auth_store
+    app.state.limiter = rate_limiter
     app.state.runner = runner
     app.state.startup_error = None
 
@@ -262,7 +266,11 @@ def create_app(
     # ------------------------------------------------------------- 对话
 
     @app.post("/chat/stream")
-    def chat_stream(payload: ChatRequest, user: User = Depends(current_user)):
+    def chat_stream(
+        payload: ChatRequest,
+        request: Request,
+        user: User = Depends(current_user),
+    ):
         current = getattr(app.state, "runner", None)
         # 不给 thread_id 时发一个新线程，不再共用 "default"：
         # 共用会让第一个用户把 default 占下来，其他人一律 403。
@@ -287,6 +295,25 @@ def create_app(
                 failed_stream(),
                 media_type="text/event-stream",
                 headers=_sse_headers(),
+            )
+
+        # 限流放在这里：空 query 和服务未就绪都不该消耗配额（它们不会调模型），
+        # 而认领线程是有副作用的写操作，被限流的请求不该留下痕迹。
+        # 鉴权关闭时所有人都是同一个占位身份，按用户名计数等于全局一个桶，
+        # 所以退回按客户端 IP。
+        limit_key = user.username if auth_store.enabled else (
+            request.client.host if request.client else "anonymous"
+        )
+        decision = rate_limiter.hit(limit_key)
+        if not decision.allowed:
+            logger.warning(
+                f"[server] 限流拦截：{limit_key} 超过 {decision.limit} 次/"
+                f"{int(rate_limiter.window_seconds)} 秒"
+            )
+            raise HTTPException(
+                status_code=429,
+                detail=f"请求太频繁了，请 {decision.retry_after} 秒后再试",
+                headers={"Retry-After": str(decision.retry_after)},
             )
 
         if auth_store.enabled:

@@ -1053,6 +1053,10 @@
           const detail = await response.json().catch(() => ({}));
           throw Object.assign(new Error(detail.detail || '这个会话属于其他账号'), { forbidden: true });
         }
+        if (response.status === 429) {
+          const detail = await response.json().catch(() => ({}));
+          throw Object.assign(new Error(detail.detail || '请求太频繁了，请稍后再试'), { throttled: true });
+        }
         if (!response.ok || !response.body) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -1082,6 +1086,11 @@
           // 线程属于别的账号（换账号登录但本地还留着旧 thread）：开新会话再说。
           startNewSession();
           showBanner(error.message + '，已为你开启新会话。');
+        } else if (error.throttled) {
+          // 限流不是故障，等一会儿再发就行，所以把问题还回输入框，不用重打一遍。
+          addNotice(row, error.message);
+          els.input.value = query;
+          els.charCount.textContent = `${query.length} / 1000`;
         } else {
           addNotice(row, '连接中断，请稍后重试。');
           showBanner('无法连接服务：' + error.message);

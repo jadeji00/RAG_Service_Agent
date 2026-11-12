@@ -20,6 +20,15 @@ legacy_owner: demo
 # 登录面板上的提示文案，由 /auth/bootstrap 原样带给前端。
 login_hint: "演示账号 demo / demo1234、alice / alice1234；只用于本地演示，公网部署前请改掉或删库重建。"
 
+# /chat/stream 的按用户滑动窗口限流。每发一次都要调真实模型，
+# 一个写错的循环脚本就能把配额烧光。
+# 计数在进程内存里：按 worker 各自计、重启即清零，多 worker 部署时
+# 实际上限是 max_requests × worker 数（见 docs/design.md 取舍表）。
+rate_limit:
+  enabled: true
+  window_seconds: 60
+  max_requests: 20
+
 # business_user_id 是 data/external/records.csv 里的 4 位用户 ID：
 # 报告链路会用它拦住「查别人使用记录」的请求。
 demo_users:

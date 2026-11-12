@@ -21,6 +21,7 @@ flowchart LR
     F -->|SSE: meta/delta/tool/notice/done/error| U
     F --> CU{current_user<br/>依赖注入}
     CU --> AU[(auth.sqlite3<br/>users / tokens / thread_owner)]
+    F --> RL{滑动窗口限流<br/>超额 429 + Retry-After}
     F --> CR[ChatRunner<br/>trace / token / 成本]
     CR --> A[ReactAgent]
     A --> RT{route_intent<br/>确定性三路路由}
@@ -42,7 +43,7 @@ flowchart LR
 
 关键点：
 
-- **服务层**：`server/app.py` 只负责 HTTP；`ChatRunner` 把 Agent 事件包装成带 trace、token、成本与 `done` 统计的 SSE 流；前端是单文件 HTML，用 `fetch` + `ReadableStream` 解析。
+- **服务层**：`server/app.py` 只负责 HTTP；`ChatRunner` 把 Agent 事件包装成带 trace、token、成本与 `done` 统计的 SSE 流；`server/rate_limit.py` 在 `/chat/stream` 上做按账号的滑动窗口限流（超额 429 + `Retry-After`，只读接口不计数）；前端是单文件 HTML，用 `fetch` + `ReadableStream` 解析。
 - **身份层**：`server/auth.py` 管账号、令牌与会话归属，以 FastAPI 依赖 `current_user` 的形式挂在业务接口上；`thread_owner` 首次写入即认领，`/sessions` 用 `owner_filter` 在截断 limit 之前先过滤，报告链路用登录绑定的业务用户 ID 拦越权。
 - **Agent 内核**：LangChain 1.x `create_agent` + 五个中间件（工具监控/护栏、日志、强制收口、报告提示词兜底切换、历史压缩）。中间件顺序是有意义的：`compress_history` 必须排在 `report_prompt_switch` 之后，因为后者是 `dynamic_prompt`、会整体替换 `system_message`。
 - **RAG**：Chroma（cosine）持久化 + md5/切分签名增量同步；空库自愈；按 QA 结构切分（前言 / Q-A 对 / 【块】 / 编号条目），145 chunks，chunk 带 `section`/`unit`/`mode` 元数据；检索是「向量 + BM25 双路召回 → RRF 融合 → gte-rerank-v2 重排 → min_score 无证据兜底」。重排通过的片段会带上 `rerank_score`，由 `rag/citations.py` 压成引用条目随回答返回（走 `ToolMessage.artifact`，不进模型上下文）。
@@ -102,6 +103,8 @@ flowchart LR
 | 16 | **历史压缩只改本次请求的视图**（`wrap_model_call` + `ModelRequest.override`），摘要并进 system 消息 | 官方 `SummarizationMiddleware`（`before_model` + `RemoveMessage`）；截断只留最近 N 条；摘要塞成一条 `HumanMessage` | `RemoveMessage` 会真的改写 state，早期对话就从界面和 checkpoint 里消失了，用户翻不回去；截断是硬丢事实；塞 `HumanMessage` 会让模型把摘要的排版当成回答模板 | 每轮多一次摘要调用（卡在首字延迟前面）；摘要本身可能编造，需要额外校验 | **已实施**：`agent/history_compressor.py`。触发 16 条 / 保留 8 条，边界不越过最后一条真实用户消息（当前轮不折）、不拆工具组；摘要按 thread 指纹缓存，折叠区变长时**从原文重写**而不是「旧摘要 + 新增」增量合并；出来后过一道 `find_unsourced_identifiers` 编造校验，摘要里出现对话稿中没有的型号/错误码/ID/日期就整轮放弃压缩。实测 36 条消息时 payload 3072 → 1700 input tokens（**-44.7%**），扣掉摘要自身开销后每轮净省 ¥0.0027；11 轮后界面历史 22 条完整、摘要零泄漏 |
 
 | 17 | **引用条目走 `ToolMessage.artifact`**（`content_and_artifact`），不改生成提示词 | 让模型在回答里输出 `[1][2]` 内联标记；把引用拼进工具返回的 content；每轮结束后按 query 重检索一次反推出处 | artifact 不进模型上下文，多带的引用信息零 token；模型自己写标记会漏、会错位、会在无证据时硬编一个编号，而这正是本项目一直在防的事；拼进 content 等于让模型多读一遍元数据、还要为它付钱；事后重检索得到的出处未必是当时真正用到的那几条 | 界面上没有「回答里第几句话对应第几条引用」的行级映射，只能看到这一轮检索到了哪些片段；artifact 会随 checkpoint 落库，每轮多约 0.5–1 KB | **已实施**：`rag/citations.py` 构造条目（文件 / 小节 / 片段 / 重排相关度 / 60 字预览），`monitor_tool` 从 artifact 收进 `context`，`iter_chat` 的 result 事件带出，`ChatRunner` 落一条 `rag:retrieve` span 并把 `sources` 放进 `done`；`load_history` 按「工具结果 → 紧随其后的最终回答」配对，所以刷新和切会话后引用还在。核心不变式是**有引用 ⟺ 真的检索过**：越界拒答、报告、无证据兜底、模型没调检索工具直接作答，四类一律 0 条（5 轮实跑验证，见 `docs/testing.md` §5.16）。重排分数只写在 Document 副本上，不写回 BM25 缓存语料，否则下一个 query 会读到上一个 query 的相关度 |
+| 18 | **限流用进程内滑动窗口，只挡 `/chat/stream`** | 固定窗口计数；令牌桶；FastAPI 中间件全局拦截；Redis 共享计数；`slowapi` 之类现成库 | 固定窗口在两个窗口交界处能放过 2 倍流量（第 59 秒打满、第 61 秒再打满），滑动窗口只记最近 N 秒的命中时刻，任意区间都不超额；只有 `/chat/stream` 会调真实模型，其余接口是本地 SQLite 查询，全局拦截会让「被限流的用户连历史都翻不了」；单进程演示服务引入 Redis 等于多一个要装、要起、要连不上的东西 | 计数按 worker 各自一份、重启即清零，多 worker 部署时实际上限是 `max_requests × worker 数`；没有跨实例协同，也没有按 IP 的匿名限流（鉴权关闭时才退回按 IP） | **已实施**：`server/rate_limit.py`。每个 key 一条 `deque` 存命中时刻，判定前先剪掉窗口外的；用 `time.monotonic()` 而不是 `time()`，系统时钟被往回调时窗口不会「变长」甚至永久卡住；**被拒的请求不记账**，否则一个每 5 秒重试的死循环会把自己永久锁死，`Retry-After` 也不再确定。key 取登录用户名（鉴权关闭时退回客户端 IP，因为那时所有人共用一个占位身份，按用户名计就变成一个全局桶）。响应是 `429` + `Retry-After` + 可读 `detail`，前端把问题还回输入框。检查点放在「认领线程」之前：被限流的请求不该在归属表和 trace 库里留下痕迹。默认 20 次 / 60 秒，配置在 `config/auth.yml` 的 `rate_limit`（实跑验证见 `docs/testing.md` §5.17） |
+| 19 | **CI 只跑离线的那一半**（单测 + 数据集校验 + 全量编译） | 把检索基线、回答级基线、阈值标定也放进 CI；用 mock 模型跑一遍评测；干脆不做 CI | 那三项都要调真实模型：跑一次 easy 回答级基线约 5 分钟、烧真金白银的配额，还需要把真密钥放进 GitHub Secrets——而它们的结果本来就要人工读（哪道题掉了、掉在检索还是生成），放进 CI 只会得到一个红/绿信号；离线的那一半能在几秒内挡住绝大多数回归 | 检索与回答质量的回归仍然靠人工，CI 绿了不代表回答没变差；`calibrate_min_score.py` 没有自动化，换语料后忘了重跑就会带着错阈值上线 | **已实施**：`.github/workflows/ci.yml`，push 到 main 与 PR 触发，ubuntu-latest + Python 3.11 + pip 缓存。四步：`unittest discover -s tests`（263 个）、easy 80 题 `--validate-only`、hard 25 题 `--validate-only`、`compileall` 全量语法编译。**必须给一个占位 `DASHSCOPE_API_KEY`**：`model/factory.py` 在导入那一刻就构造 `ChatTongyi` 与 `DashScopeEmbeddings`，缺这个变量会直接 `ValidationError`，连一个不发请求的单测都跑不起来。只跑 ubuntu 是为了快；Windows 侧由本地套件覆盖（代码里没有平台相关分支，`rag/citations.py` 的路径归一化同时处理 `\` 与 `/`） |
 
 ## 5. 明确不做
 
@@ -111,7 +114,7 @@ flowchart LR
 
 ## 6. 里程碑与验收
 
-当前进度：**M1–M5 全部完成**（easy/hard 评测与 pass^k；QA 切分 + 混合召回 + 重排 + 无证据兜底；FastAPI + SSE + 前端；工具护栏与越界路由；trace/token 账本），报告确定性流程已提前落地。
+当前进度：**M1–M6 全部完成**（easy/hard 评测与 pass^k；QA 切分 + 混合召回 + 重排 + 无证据兜底；FastAPI + SSE + 前端；工具护栏与越界路由；trace/token 账本；服务化收尾），报告确定性流程已提前落地。
 
 | 阶段 | 内容 | 验收证据 |
 |---|---|---|
@@ -120,6 +123,7 @@ flowchart LR
 | M3 | FastAPI + SSE + 薄前端 | `uvicorn server.app:app` 可复现启动；13 个 API/事件流单测；实跑 QA/报告/越界三条链路与会话切换/删除 |
 | M4 | 工具护栏 + 循环熔断 + 路由覆盖率 | 越界拒答、参数拦截、重复调用拦截、强制收口的单测与实跑；报告确定性流程已提前完成 |
 | M5 | Trace + 成本 + 部署 | 每次请求一条 trace + spans；`/usage` 汇总；真实请求的 token、首 token、成本与延迟 |
+| M6 | 服务化收尾：身份与会话归属、长会话压缩、回答引用溯源、按用户限流、CI | `docs/testing.md` §5.14–§5.17 四份实跑记录：越权 403 与报告归属拦截、36 条消息 payload -44.7% 且界面历史零丢失、5 轮引用实跑 `PROBLEMS 0` 且刷新后引用仍在、429 + `Retry-After` 与窗口滑出后自动恢复；`.github/workflows/ci.yml` 覆盖 263 个单测与两套数据集校验 |
 
 ## 7. 已知短板（当前）
 
@@ -134,7 +138,7 @@ flowchart LR
 9. 报告生成已由确定性流程固定为「取数 1 次 + 写作 1 次」，P50 从 12.5 秒降到 **7.25 秒**；SSE 后首 token 约 0.4–0.8 秒，但完整回答仍需 6–8 秒，要稳定压到 5 秒内需要更快的报告模型或更短模板。
 10. 护栏与越界规则是启发式：复杂越界请求仍可能落到模型；`hard-neg-002/004` 这类“能力边界”问题没有被确定性拦截。
 11. trace 账本是单机 SQLite，多实例部署需要换 Postgres 或接 OpenTelemetry；`answer` 只保留前 8000 字。
-12. ~~前端没有鉴权、限流与多用户隔离；`thread_id` 由客户端生成，适合本地演示，不适合直接暴露公网。~~ 鉴权与会话隔离已实施（决策 14/15）：除 `/health`、`/auth/bootstrap`、`/auth/login` 与静态页外都要带 Bearer 令牌，会话按归属过滤，别人的线程 403，报告查别人的用户 ID 直接拒答。剩下的短板是**限流仍没有**，且身份是演示级的（账号写死在 `config/auth.yml`，无注册、无刷新令牌、无角色权限），公网部署前必须改密码或删库重建。
+12. ~~前端没有鉴权、限流与多用户隔离；`thread_id` 由客户端生成，适合本地演示，不适合直接暴露公网。~~ 鉴权、会话隔离与限流都已实施（决策 14/15/18）：除 `/health`、`/auth/bootstrap`、`/auth/login` 与静态页外都要带 Bearer 令牌，会话按归属过滤，别人的线程 403，报告查别人的用户 ID 直接拒答，`/chat/stream` 超额返回 429。剩下的短板是**限流计数在进程内存里**（多 worker 各自计、重启即清零），且身份是演示级的（账号写死在 `config/auth.yml`，无注册、无刷新令牌、无角色权限），公网部署前必须改密码或删库重建、并把限流换成共享存储。
 20. 观测接口只做了「要登录」，没做「按账号隔离」：任何登录用户调 `/traces`、`/trace/{id}`、`/usage` 看到的都是全量数据（实测 alice 登录后 `/usage` 仍显示 8 次请求、12,024 tokens，其中大部分是 demo 产生的）。trace 表里没有 `username` 列，要隔离得先补这一列再改查询，属于下一步而不是本轮范围。
 21. `/chat/stream` 不校验 `thread_id` 的格式（只限制长度 ≤ 64）：传一个非 32 位 hex 的 ID 会照常写入 checkpoint，但 `is_session_thread` 会把它排除在会话列表外，`DELETE /sessions/{id}` 也返回 422，于是留下一条既看不见又删不掉的孤儿线程。归属表同理会多一行。验证脚本用截断的 ID 就造出过一条（已手工清理）。要堵这个口子得在入口按同一套规则校验 thread_id，代价是不能再用 `smoke-qa-1` 这类可读 ID 走 HTTP。
 13. easy negative 复跑 100% 来自确定性规则覆盖（15 题全部命中），不代表开放式边界已解决；hard negative 的严格 pass^3 仍只有 60%。
