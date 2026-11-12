@@ -13,8 +13,11 @@ retrieval:
   # 重排：把融合后的 candidates 条候选交给交叉编码器逐条打分再截断。
   # 调用失败（网络/限流/鉴权）会自动退回 RRF 顺序，不影响可用性。
   # min_score 是「没有证据」的阈值：最高分低于它就返回空，上层直接拒答而不是硬编。
+  # 0.16 由 eval/calibrate_min_score.py 标定：75 道 answerable 最低分 0.1673，
+  # 5 道未被服务范围路由拦下的 negative 最高分 0.1578，取可分区间内的值。
+  # 换语料或换重排模型后要重新标定。
   rerank:
     enabled: true
     model: gte-rerank-v2
     candidates: 20
-    min_score: 0.0
+    min_score: 0.16

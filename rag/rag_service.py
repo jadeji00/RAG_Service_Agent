@@ -3,6 +3,7 @@ from rag.hybrid_retriever import HybridRetriever
 from rag.reranker import DashScopeReranker
 from rag.vector_store import VectorStoreService
 from utils.config_handler import chroma_conf, rag_conf
+from utils.logger_handler import logger
 from utils.prompt_loader import load_rag_prompts
 from langchain_core.prompts import PromptTemplate
 from model.factory import chat_model
@@ -12,6 +13,13 @@ from langchain_core.documents import Document
 # 检索管线的可调参数：mode=vector 时退化成纯向量召回，方便评测做 A/B。
 _retrieval_conf = rag_conf.get("retrieval") or {}
 _rerank_conf = _retrieval_conf.get("rerank") or {}
+
+# 重排后没有任何候选过阈值时的固定回答：宁可承认没找到，也不让模型凭空调编。
+NO_EVIDENCE_ANSWER = (
+    "知识库里没有找到和这个问题直接相关的内容，为了避免给你错误信息，我先不作答。"
+    "可以换个说法再问一次（比如补上机型、错误码或具体场景），"
+    "也可以问我选购、使用、维护保养、故障排查方面的问题。"
+)
 
 
 def _build_reranker() -> DashScopeReranker | None:
@@ -72,6 +80,11 @@ class RagSummarizeService(object):
         # 越界请求在进入模型前直接拒答，避免模型顺手完成编程/翻译等任务。
         if is_out_of_scope_query(query):
             return OUT_OF_SCOPE_ANSWER
+        # 重排阈值把候选全砍掉时说明知识库里确实没有依据，直接给固定回答，
+        # 既省一次模型调用，也堵住「拿着不相关资料硬编」的路。
+        if not context_docs:
+            logger.info(f"[rag] 无证据兜底触发：{query[:40]}")
+            return NO_EVIDENCE_ANSWER
         return self.chain.invoke(
             {
                 "input": query,

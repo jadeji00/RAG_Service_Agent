@@ -1,0 +1,641 @@
+{
+  "meta": {
+    "generated_at": "2026-11-13 01:44:51",
+    "run_id": "20261113014335",
+    "dataset": "eval\\dataset_hard.jsonl",
+    "types": [
+      "answerable",
+      "negative",
+      "report"
+    ],
+    "counts": {
+      "answerable": 20,
+      "negative": 5
+    },
+    "collection": "agent",
+    "chunk_count": 145,
+    "embedding_model": "text-embedding-v4",
+    "chat_model": "qwen-max",
+    "judge_model": "qwen-max",
+    "judge_calls": 25,
+    "judge_errors": 0,
+    "k": 3,
+    "repeat": 1
+  },
+  "summary": {
+    "answerable": {
+      "evaluated": 20,
+      "scored": 20,
+      "correct_rate": 0.95,
+      "acceptable_rate": 1.0,
+      "mean_correctness": 1.95,
+      "correctness_distribution": {
+        "2": 19,
+        "1": 1,
+        "0": 0
+      },
+      "grounded_rate": 0.95,
+      "faithful_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "faithfulness_distribution": {
+        "2": 19,
+        "1": 1,
+        "0": 0
+      },
+      "mean_term_hit_rate": 0.775,
+      "pass_rate": 1.0,
+      "gen_latency_ms": {
+        "p50": 1754.02,
+        "p95": 2806.91,
+        "mean": 1741.94
+      },
+      "judge_latency_ms": {
+        "p50": 1511.09,
+        "p95": 1982.62,
+        "mean": 1579.37
+      },
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "negative": {
+      "evaluated": 5,
+      "scored": 5,
+      "refusal_accuracy": 1.0,
+      "cue_rate": 1.0,
+      "pass_rate": 1.0,
+      "gen_latency_ms": {
+        "p50": 266.33,
+        "p95": 332.14,
+        "mean": 269.23
+      },
+      "judge_latency_ms": {
+        "p50": 1116.59,
+        "p95": 1996.25,
+        "mean": 1254.27
+      },
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "report": {
+      "evaluated": 0,
+      "scored": 0,
+      "complete_rate": null,
+      "field_coverage": {},
+      "mean_field_coverage": null,
+      "mean_fact_coverage": null,
+      "faithful_rate": null,
+      "grounded_rate": null,
+      "advice_rate": null,
+      "pipeline_ok_rate": null,
+      "fetch_args_ok_rate": null,
+      "pass_rate": null,
+      "gen_latency_ms": {
+        "p50": null,
+        "p95": null,
+        "mean": null
+      },
+      "judge_latency_ms": {
+        "p50": null,
+        "p95": null,
+        "mean": null
+      },
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "overall": {
+      "evaluated": 25,
+      "passed": 25,
+      "pass_rate": 1.0,
+      "errors": 0,
+      "judge_errors": 0
+    },
+    "pass_k": null
+  },
+  "details": {
+    "answerable": [
+      {
+        "id": "hard-qa-001",
+        "type": "answerable",
+        "question": "家里是复式，机器每次换层都要重新建图，选的时候该看什么？",
+        "answer": "选购支持多地图记忆和自动楼层识别功能的扫地机器人，这样可以避免每次换层时都需要重新建图。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "选购指南.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确反映了标准答案的核心事实，并且所有信息都能在提供的参考资料中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1831.23,
+        "judge_latency_ms": 1498.89,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-002",
+        "type": "answerable",
+        "question": "实木地板拖完怕受潮，水量和清洁液要怎么控制？",
+        "answer": "清洁实木地板时，应控制水量保持微湿状态，避免使用强酸碱清洁液。拖地后需及时通风以加速干燥，防止受潮。对于可能出现的水痕问题，可以通过降低水量、清洗或更换拖布以及开启干拖模式来解决。建议对实木地板采取低水量或干擦方式清洁。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地反映了标准答案中的关键点，所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 2806.91,
+        "judge_latency_ms": 2437.39,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-003",
+        "type": "answerable",
+        "question": "宠物换毛季主刷总缠毛，选刷子和日常清理各要注意什么？",
+        "answer": "选择刷子时，胶刷更适合防缠绕，适合宠物家庭；也可以考虑胶毛一体刷作为折中方案。日常清理方面，在换毛季应增加清扫频次，每天至少一次全屋清扫，并及时清理尘盒和主刷。对于主刷被宠物毛发缠绕的情况，应该断电后使用清理刀或剪刀小心清除，避免直接用手拉扯，并检查两端轴承。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "故障排除.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确反映了标准答案中的关键点，且所有信息均可从检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 3120.64,
+        "judge_latency_ms": 1612.01,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-004",
+        "type": "answerable",
+        "question": "家里是黑色地毯，机器报 E05，第一步该擦哪个传感器？",
+        "answer": "第一步应该擦拭底部的下视传感器。",
+        "sources": [
+          "故障排除.txt",
+          "维护保养.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确指出了需要擦拭底部的下视传感器，与标准答案一致且基于检索上下文。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1707.95,
+        "judge_latency_ms": 1571.89,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-005",
+        "type": "answerable",
+        "question": "出差一个月回来机器开不了机，放回充电座要充多久？",
+        "answer": "放回充电座连续充4小时以上。如果仍然无法开机，建议检查插头和插座是否正常，清洁充电触点，若问题依旧则需要送修。",
+        "sources": [
+          "故障排除.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1961.73,
+        "judge_latency_ms": 1896.44,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-006",
+        "type": "answerable",
+        "question": "拖完地走上去发滑，是清洁液残留还是水量太大？",
+        "answer": "拖完地走上去发滑可能是清洁液残留或水量太大导致的，建议减少清洁液用量，并用清水再拖一遍。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且信息来源于提供的检索上下文。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1908.59,
+        "judge_latency_ms": 1323.46,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-007",
+        "type": "answerable",
+        "question": "家里老人不想用手机 App，选机型要看哪些操作方式？",
+        "answer": "为家里老人选择手机时，应考虑操作方式简单易用的机型，比如按键少、语音提示清晰的手机，并且支持实体遥控或简单的App操作。",
+        "sources": [
+          "选购指南.txt",
+          "选购指南.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，所有要点都在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1766.31,
+        "judge_latency_ms": 1392.89,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-008",
+        "type": "answerable",
+        "question": "面粉撒了一地，能直接让扫地机器人吸吗？",
+        "answer": "不建议直接让扫地机器人吸面粉，因为细粉容易堵塞滤网和风道，甚至进入电机。应该使用吸尘器或扫帚处理。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确无误，且所有信息均能在提供的检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1972.56,
+        "judge_latency_ms": 1402.04,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-009",
+        "type": "answerable",
+        "question": "自动集尘的尘袋倒空后继续用，会影响什么？",
+        "answer": "重复使用倒空后的尘袋会降低过滤效果，也可能导致破损漏灰。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案及检索上下文完全一致，未添加额外信息。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1023.89,
+        "judge_latency_ms": 1280.27,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-010",
+        "type": "answerable",
+        "question": "拖地时总把地毯边卷起来，固定和机器设置分别怎么做？",
+        "answer": "使用地毯压条或双面胶固定地毯边缘；在App中开启地毯识别，并设置地毯为禁区，或者开启拖布抬升功能。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地反映了标准答案，并且所有信息都能在提供的参考资料中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 2301.65,
+        "judge_latency_ms": 1982.62,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-011",
+        "type": "answerable",
+        "question": "回充总失败，充电座怎么摆，光线有影响吗？",
+        "answer": "回充失败可能是因为充电座周围有障碍、位置被移动、回充传感器脏污或光线过暗。应将充电座靠墙放置并留出左右空间，擦净回充探头，并在App中手动触发回充。光线过强反射也会影响回充效果。",
+        "sources": [
+          "故障排除.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 1,
+          "reason": "核心事实一致，但提到的光线过强反射影响回充在上下文中无直接依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 2106.96,
+        "judge_latency_ms": 1447.81,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-012",
+        "type": "answerable",
+        "question": "厨房地面有油，日常能不能直接交给机器人拖？",
+        "answer": "日常浮油可以交给机器人拖，但顽固油污需要先人工处理。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确反映了标准答案的核心信息，且这些信息在提供的参考资料中均有依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1277.9,
+        "judge_latency_ms": 1727.79,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-013",
+        "type": "answerable",
+        "question": "新机第一次用，是先充电还是先建图？",
+        "answer": "建议先充满电再建图，通常需要3-4小时。首次建图尽量一次走完全屋，以保证地图完整性。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答与标准答案一致，且所有信息均可在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1265.64,
+        "judge_latency_ms": 1348.63,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-014",
+        "type": "answerable",
+        "question": "滤网水洗后马上装回去，会有什么问题？",
+        "answer": "滤网水洗后如果未完全晾干就装回去，可能会导致设备内部潮湿，影响使用效果。",
+        "sources": [
+          "维护保养.txt",
+          "维护保养.txt"
+        ],
+        "verdict": {
+          "correctness": 1,
+          "faithfulness": 2,
+          "reason": "提到未完全晾干的影响，但未强调必须完全晾干再装回。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1218.08,
+        "judge_latency_ms": 1532.19,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-015",
+        "type": "answerable",
+        "question": "机器总在同一块地方来回扫，可能是什么原因？",
+        "answer": "机器总在同一块地方来回扫的原因可能是地图定位失败、充电座被移动、地面强反光或传感器脏污。处理方法包括清理传感器、恢复充电座位置、重新建图或将复杂区域设为禁区。",
+        "sources": [
+          "故障排除.txt",
+          "故障排除.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地反映了标准答案中的关键点，并且所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1754.02,
+        "judge_latency_ms": 1511.09,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-016",
+        "type": "answerable",
+        "question": "家里有小孩，边刷和 App 分别要防什么？",
+        "answer": "有小孩的家庭使用边刷和App时需要注意儿童锁和边刷防护。",
+        "sources": [
+          "选购指南.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确反映了标准答案中的核心事实，并且这些信息都可以从检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1042.46,
+        "judge_latency_ms": 1504.73,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-017",
+        "type": "answerable",
+        "question": "拖布变硬还有味道，是继续洗还是该换新的？",
+        "answer": "如果拖布变硬且有异味，建议更换新的拖布。同时，每次使用后应清洗拖布，并定期彻底清洗以保持清洁。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确反映了标准答案的核心事实，且所有信息均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1397.27,
+        "judge_latency_ms": 1484.83,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-018",
+        "type": "answerable",
+        "question": "梅雨季基站有霉味，除了倒污水还要做什么？",
+        "answer": "除了倒空污水箱外，还应加强拖布和基站的烘干，拆洗清洗盘和滤网，并使用官方清洁液进行清洁。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "维护保养.txt",
+          "扫拖一体机器人100问.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地反映了标准答案中的关键要点，并且所有信息都能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 1.0,
+        "passed": true,
+        "gen_latency_ms": 1411.1,
+        "judge_latency_ms": 1631.64,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-019",
+        "type": "answerable",
+        "question": "3 厘米高的门槛，扫地机器人能直接过去吗？",
+        "answer": "根据参考资料，扫地机器人通常能通过1.5-2厘米高的门槛。对于3厘米高的门槛，建议加装爬坡垫或设置为禁区。",
+        "sources": [
+          "扫拖一体机器人100问.txt",
+          "扫地机器人100问2.txt",
+          "扫地机器人100问2.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "回答准确反映了标准答案的核心事实，且所有信息均来源于提供的检索上下文。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1397.1,
+        "judge_latency_ms": 1461.06,
+        "error": ""
+      },
+      {
+        "id": "hard-qa-020",
+        "type": "answerable",
+        "question": "机器进水后，能不能先开机试试还能不能用？",
+        "answer": "机器进水后不应该先开机试试，而是应该立即断电，取出尘盒和水箱，擦干并通风晾干，并建议送修检测。",
+        "sources": [
+          "扫地机器人100问2.txt",
+          "故障排除.txt",
+          "故障排除.txt"
+        ],
+        "verdict": {
+          "correctness": 2,
+          "faithfulness": 2,
+          "reason": "模型回答准确且完整地反映了标准答案中的关键信息，所有内容均能在检索上下文中找到依据。",
+          "error": ""
+        },
+        "term_hit_rate": 0.5,
+        "passed": true,
+        "gen_latency_ms": 1566.81,
+        "judge_latency_ms": 1539.76,
+        "error": ""
+      }
+    ],
+    "negative": [
+      {
+        "id": "hard-neg-001",
+        "type": "negative",
+        "question": "扫地机器人能除甲醛吗？",
+        "answer": "知识库里没有找到和这个问题直接相关的内容，为了避免给你错误信息，我先不作答。可以换个说法再问一次（比如补上机型、错误码或具体场景），也可以问我选购、使用、维护保养、故障排查方面的问题。",
+        "sources": [],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了资料不足，并建议用户提供更多信息或询问其他相关问题。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 274.99,
+        "judge_latency_ms": 901.66,
+        "error": ""
+      },
+      {
+        "id": "hard-neg-002",
+        "type": "negative",
+        "question": "它能自己爬楼梯上下楼吗？",
+        "answer": "知识库里没有找到和这个问题直接相关的内容，为了避免给你错误信息，我先不作答。可以换个说法再问一次（比如补上机型、错误码或具体场景），也可以问我选购、使用、维护保养、故障排查方面的问题。",
+        "sources": [],
+        "verdict": {
+          "refusal": 1,
+          "reason": "明确说明了无法回答，并建议用户提供更多信息或询问其他方面的问题。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 266.33,
+        "judge_latency_ms": 1116.59,
+        "error": ""
+      },
+      {
+        "id": "hard-neg-003",
+        "type": "negative",
+        "question": "这台机器能当空气净化器用吗？",
+        "answer": "知识库里没有找到和这个问题直接相关的内容，为了避免给你错误信息，我先不作答。可以换个说法再问一次（比如补上机型、错误码或具体场景），也可以问我选购、使用、维护保养、故障排查方面的问题。",
+        "sources": [],
+        "verdict": {
+          "refusal": 1,
+          "reason": "客服正确地表明了无法根据现有信息回答问题，并引导用户提供更多信息。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 332.14,
+        "judge_latency_ms": 1996.25,
+        "error": ""
+      },
+      {
+        "id": "hard-neg-004",
+        "type": "negative",
+        "question": "能帮我给手机无线充电吗？",
+        "answer": "知识库里没有找到和这个问题直接相关的内容，为了避免给你错误信息，我先不作答。可以换个说法再问一次（比如补上机型、错误码或具体场景），也可以问我选购、使用、维护保养、故障排查方面的问题。",
+        "sources": [],
+        "verdict": {
+          "refusal": 1,
+          "reason": "正确指出了无法直接回答问题，并引导用户提供更多信息或调整提问方向。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 240.15,
+        "judge_latency_ms": 1219.51,
+        "error": ""
+      },
+      {
+        "id": "hard-neg-005",
+        "type": "negative",
+        "question": "它能检测家里的煤气泄漏吗？",
+        "answer": "知识库里没有找到和这个问题直接相关的内容，为了避免给你错误信息，我先不作答。可以换个说法再问一次（比如补上机型、错误码或具体场景），也可以问我选购、使用、维护保养、故障排查方面的问题。",
+        "sources": [],
+        "verdict": {
+          "refusal": 1,
+          "reason": "模型正确地表明了无法直接回答问题，并建议用户提供更多信息。",
+          "error": ""
+        },
+        "cue": true,
+        "passed": true,
+        "gen_latency_ms": 232.55,
+        "judge_latency_ms": 1037.34,
+        "error": ""
+      }
+    ],
+    "report": []
+  }
+}

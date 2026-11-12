@@ -13,11 +13,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 
-from eval.metrics import percentile
-from rag.rag_service import RagSummarizeService
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from eval.metrics import percentile  # noqa: E402
+from agent.scope_router import is_out_of_scope_query  # noqa: E402
+from rag.rag_service import RagSummarizeService  # noqa: E402
 
 DEFAULT_DATASETS = ["eval/dataset.jsonl", "eval/dataset_hard.jsonl"]
 GROUPS = ("answerable", "negative", "report")
@@ -58,11 +64,15 @@ def collect(service: RagSummarizeService, rows: list[dict], k: int) -> list[dict
                 "pool": stats.get("rerank_pool", 0),
                 "rerank": stats.get("rerank"),
                 "latency_ms": stats.get("rerank_latency_ms", 0.0),
+                # 已经被服务范围路由拦下的 negative 根本走不到「无证据兜底」，
+                # 不能拿它们的分数来定阈值，否则会把阈值抬高误伤正常问题。
+                "out_of_scope": is_out_of_scope_query(question),
             }
         )
         print(
             f"[{records[-1]['group']:>10}] {records[-1]['id']} "
-            f"top={records[-1]['top_score']:.4f} kept={records[-1]['kept']}"
+            f"top={records[-1]['top_score']:.4f} kept={records[-1]['kept']} "
+            f"scope_blocked={records[-1]['out_of_scope']}"
         )
     return records
 
@@ -88,11 +98,21 @@ def summarize(values: list[float]) -> dict:
 
 
 def pick_threshold(records: list[dict], keep_ratio: float = 1.0) -> dict:
-    """在所有观测分数里挑阈值：先要求 answerable 全保住，再看能拒掉多少 negative。"""
+    """在所有观测分数里挑阈值：先要求 answerable 全保住，再看能拒掉多少 negative。
+
+    只用「没被服务范围路由拦下」的 negative 参与计算：被拦下的那些根本走不到
+    无证据兜底，把它们的高分算进来只会把阈值抬到误伤正常问题的位置。
+    """
     answerable = [r["top_score"] for r in records if r["group"] == "answerable"]
-    negative = [r["top_score"] for r in records if r["group"] == "negative"]
+    negatives = [r for r in records if r["group"] == "negative"]
+    negative = [r["top_score"] for r in negatives if not r["out_of_scope"]]
+    blocked = len(negatives) - len(negative)
     if not answerable or not negative:
-        return {"threshold": None, "reason": "缺少 answerable 或 negative 样本"}
+        return {
+            "threshold": None,
+            "reason": "缺少 answerable 或未被路由拦下的 negative 样本",
+            "scope_blocked_negatives": blocked,
+        }
 
     candidates = sorted({round(score, 4) for score in [*answerable, *negative]})
     best = None
@@ -113,10 +133,30 @@ def pick_threshold(records: list[dict], keep_ratio: float = 1.0) -> dict:
             "reason": f"没有阈值能在保住 {keep_ratio:.0%} answerable 的前提下拒掉 negative",
             "answerable_min": round(min(answerable), 4),
             "negative_max": round(max(negative), 4),
+            "scope_blocked_negatives": blocked,
         }
-    best["answerable_min"] = round(min(answerable), 4)
-    best["negative_max"] = round(max(negative), 4)
-    best["separable"] = max(negative) < min(answerable)
+
+    answerable_min = round(min(answerable), 4)
+    negative_max = round(max(negative), 4)
+    best["answerable_min"] = answerable_min
+    best["negative_max"] = negative_max
+    best["negative_samples"] = len(negative)
+    best["scope_blocked_negatives"] = blocked
+    best["separable"] = negative_max < answerable_min
+    # 两组能分开时不贴着 answerable 的最低分取值，改用间隔中点，
+    # 给没进评测集的正常问题留余量，避免阈值一抖动就把证据砍掉。
+    suggested = (
+        round((negative_max + answerable_min) / 2, 4)
+        if best["separable"]
+        else best["threshold"]
+    )
+    best["suggested"] = suggested
+    best["answerable_kept_at_suggested"] = round(
+        sum(1 for score in answerable if score >= suggested) / len(answerable), 4
+    )
+    best["negative_refused_at_suggested"] = round(
+        sum(1 for score in negative if score < suggested) / len(negative), 4
+    )
     return best
 
 
@@ -148,19 +188,23 @@ def render_markdown(payload: dict) -> str:
         lines.append(f"- 无法自动分离：{suggestion.get('reason')}")
     else:
         lines += [
-            f"- 建议 `min_score = {suggestion['threshold']}`",
-            f"- answerable 保留率：{suggestion['answerable_kept']:.2%}",
-            f"- negative 拒答率：{suggestion['negative_refused']:.2%}",
+            f"- 建议 `min_score = {suggestion['suggested']}`（分离边界 {suggestion['threshold']}，两组可分时取间隔中点留余量）",
+            f"- answerable 保留率：{suggestion['answerable_kept_at_suggested']:.2%}",
+            f"- 未被路由拦下的 negative 拒答率：{suggestion['negative_refused_at_suggested']:.2%}"
+            f"（样本 {suggestion['negative_samples']} 条）",
+            f"- 已被服务范围路由拦下、不参与阈值计算的 negative：{suggestion['scope_blocked_negatives']} 条",
             f"- 两组是否完全可分：{'是' if suggestion.get('separable') else '否（有重叠，阈值只是折中）'}",
             f"- answerable 最低分 {suggestion['answerable_min']} / negative 最高分 {suggestion['negative_max']}",
         ]
 
-    lines += ["", "## 分数最低的 answerable 与分数最高的 negative", ""]
-    lines.append("| 分组 | ID | 最高重排分 | 问题 |")
-    lines.append("|---|---|---|---|")
+    lines += ["", "## 边界样本（分数最低的 answerable 与分数最高的 negative）", ""]
+    lines.append("| 分组 | ID | 最高重排分 | 路由已拦 | 问题 |")
+    lines.append("|---|---|---|---|---|")
     for record in payload["edge_cases"]:
+        blocked = "是" if record.get("out_of_scope") else "否"
         lines.append(
-            f"| {record['group']} | {record['id']} | {record['top_score']:.4f} | {record['question']} |"
+            f"| {record['group']} | {record['id']} | {record['top_score']:.4f} | "
+            f"{blocked} | {record['question']} |"
         )
 
     lines += [
@@ -193,9 +237,15 @@ def main() -> int:
     answerable_sorted = sorted(
         (r for r in records if r["group"] == "answerable"), key=lambda r: r["top_score"]
     )[:5]
-    negative_sorted = sorted(
-        (r for r in records if r["group"] == "negative"), key=lambda r: -r["top_score"]
+    negatives = [r for r in records if r["group"] == "negative"]
+    # 阈值只对「路由没拦下」的 negative 生效，所以边界样本也按这批来看；
+    # 另附分数最高的被拦样本，说明为什么它们不该参与计算。
+    in_scope_negative = sorted(
+        (r for r in negatives if not r["out_of_scope"]), key=lambda r: -r["top_score"]
     )[:5]
+    blocked_negative = sorted(
+        (r for r in negatives if r["out_of_scope"]), key=lambda r: -r["top_score"]
+    )[:3]
 
     payload = {
         "meta": {
@@ -211,8 +261,11 @@ def main() -> int:
         "groups": {name: summarize(values) for name, values in grouped.items()},
         "suggestion": suggestion,
         "edge_cases": [
-            {k: r[k] for k in ("group", "id", "question", "top_score", "kept")}
-            for r in [*answerable_sorted, *negative_sorted]
+            {
+                k: r[k]
+                for k in ("group", "id", "question", "top_score", "kept", "out_of_scope")
+            }
+            for r in [*answerable_sorted, *in_scope_negative, *blocked_negative]
         ],
         "records": records,
     }
