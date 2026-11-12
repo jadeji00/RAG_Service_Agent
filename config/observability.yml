@@ -8,5 +8,11 @@ pricing:
   qwen-max:
     input_per_1k: 0.0024
     output_per_1k: 0.0096
+  # 会话历史压缩用的摘要模型。qwen-flash 是阶梯计费，这里填最低档
+  # （单次输入 ≤128K tokens：0.15 / 1.5 元每百万 tokens）；压缩请求的对话稿
+  # 远小于 128K，所以不会跳到更高档。
+  qwen-flash:
+    input_per_1k: 0.00015
+    output_per_1k: 0.0015
 
 currency: CNY

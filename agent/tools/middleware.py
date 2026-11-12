@@ -2,7 +2,7 @@ from typing import Callable
 
 from langchain.agents import AgentState
 from langchain_core.messages import HumanMessage, ToolMessage
-from langchain.agents.middleware import wrap_tool_call, before_model, dynamic_prompt, ModelRequest
+from langchain.agents.middleware import wrap_tool_call, before_model, dynamic_prompt, wrap_model_call, ModelRequest
 from langchain.tools.tool_node import ToolCallRequest
 from langgraph.runtime import Runtime
 from langgraph.types import Command
@@ -11,6 +11,7 @@ from agent.guardrails import (
     new_guard_state,
     record_tool_result,
 )
+from agent.history_compressor import merge_summary_into_system
 from utils.logger_handler import logger
 from utils.prompt_loader import load_system_prompts,load_report_prompts
 
@@ -139,5 +140,49 @@ def report_prompt_switch(requests:ModelRequest): # 报告提示符切换
     if is_report:   #是报告生成场景，返回报告生成提示词内容
         return load_report_prompts()
     return load_system_prompts()
+
+
+@wrap_model_call
+def compress_history(request: ModelRequest, handler):
+    """长会话只给模型「历史摘要 + 最近原文」，checkpoint 与界面历史保持完整。
+
+    用 ``wrap_model_call`` 而不是 ``before_model``：前者改的是本次请求的视图，
+    后者返回 ``RemoveMessage`` 会真的改写 state，早期对话就从界面消失了。
+
+    摘要并进 system 消息、不塞 HumanMessage：实测塞进对话流时模型会把摘要的排版
+    当成回答模板，每个回答开头都先复述一遍「用户诉求 / 已给出的结论」。
+
+    **必须排在 ``report_prompt_switch`` 之后**：``dynamic_prompt`` 是整体替换
+    ``system_message`` 的，排在前面追加的摘要会被它覆盖掉。
+    """
+    context = getattr(request.runtime, "context", None) or {}
+    compressor = context.get("history_compressor")
+    if compressor is None:
+        return handler(request)
+
+    view, stats = compressor.view(
+        str(context.get("thread_id") or ""),
+        request.messages,
+        usage_sink=context.get("usage_sink"),
+    )
+    context.setdefault("history_stats", []).append(stats)
+
+    summary_text = (stats.get("summary_text") or "").strip()
+    if not stats.get("triggered") or stats.get("fallback") or not summary_text:
+        return handler(request)
+
+    logger.info(
+        f"[history] 压缩 {stats['before_messages']}→{stats['after_messages']} 条"
+        f"（摘要 {stats.get('summary_chars')} 字"
+        f"{'，复用缓存' if stats.get('reused') else ''}）"
+    )
+    return handler(
+        request.override(
+            system_message=merge_summary_into_system(
+                request.system_message, summary_text
+            ),
+            messages=view,
+        )
+    )
 
 

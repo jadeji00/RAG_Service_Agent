@@ -8,6 +8,11 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 from agent.guardrails import new_guard_state
+from agent.history_compressor import (
+    SUMMARY_STREAM_TAG,
+    HistoryCompressor,
+    summarize_history_stats,
+)
 from agent.report_pipeline import generate_report, stream_report
 from agent.scope_router import OUT_OF_SCOPE_ANSWER, route_intent
 from agent.session_index import (
@@ -29,6 +34,7 @@ from agent.tools.agent_tools import (
     rag_summarize,
 )
 from agent.tools.middleware import (
+    compress_history,
     guard_before_model,
     log_before_model,
     monitor_tool,
@@ -68,14 +74,19 @@ class ReactAgent:
 
         self._checkpoint_db_path = None
         self.checkpointer, self._checkpointer_conn = self._build_checkpointer()
+        # 摘要器按 thread 缓存，必须跟着 Agent 单例活着；每次请求新建会丢掉复用。
+        self.history_compressor = HistoryCompressor()
         self.agent = create_agent(
             model=self._build_stream_model(),
             tools=[rag_summarize, get_weather, get_user_location,
                    get_user_id, get_current_month,
                    fetch_external_data],
             system_prompt=load_system_prompts(),
+            # compress_history 必须排在 report_prompt_switch 之后：后者是
+            # dynamic_prompt，会整体替换 system_message；排前面追加的历史摘要
+            # 会被它覆盖掉。列表顺序 = 由外到内，越靠后越晚执行。
             middleware=[monitor_tool, log_before_model, guard_before_model,
-                        report_prompt_switch],
+                        report_prompt_switch, compress_history],
             checkpointer=self.checkpointer,
         )
 
@@ -220,6 +231,10 @@ class ReactAgent:
         context = {
             "report": False,
             "guard": new_guard_state(),
+            "thread_id": thread_id,
+            "history_compressor": self.history_compressor,
+            "usage_sink": account.add,
+            "history_stats": [],
         }
 
         answer_parts: list[str] = []
@@ -233,8 +248,14 @@ class ReactAgent:
         ):
             if mode == "messages":
                 chunk, metadata = data
+                meta = metadata or {}
+                # 摘要模型是在 model 节点里调的，langgraph_node 同样是 "model"，
+                # 只按节点过滤会把摘要正文当成回答推给用户，这里再按 tag 排掉。
+                # 顺带避免摘要 token 被记两次账（compressor 已经通过 usage_sink 记过）。
+                if SUMMARY_STREAM_TAG in (meta.get("tags") or []):
+                    continue
                 # tools 节点的内容不是模型回答，过滤掉。
-                if (metadata or {}).get("langgraph_node") != "model":
+                if meta.get("langgraph_node") != "model":
                     continue
                 account.add(extract_usage(chunk))
                 text = _message_text(getattr(chunk, "content", ""))
@@ -284,6 +305,7 @@ class ReactAgent:
             "type": "result",
             "route": "qa",
             "answer": answer,
+            "history": summarize_history_stats(context["history_stats"]),
         }
 
     def execute_stream(self, query: str, thread_id: str = "default"):

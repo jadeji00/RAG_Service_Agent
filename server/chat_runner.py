@@ -163,6 +163,20 @@ class ChatRunner:
 
                 if event_type == "result":
                     result = event
+                    history_stats = event.get("history")
+                    if history_stats:
+                        # 压缩统计单独成 span：既能看省了多少条消息，也能看
+                        # 摘要本身花了多少 token / 多少毫秒。
+                        self.store.add_span(
+                            trace_id,
+                            "history:compress",
+                            "compress",
+                            duration_ms=history_stats.get("duration_ms"),
+                            status="fallback"
+                            if history_stats.get("fallback_calls")
+                            else "ok",
+                            detail=history_stats,
+                        )
 
         except GeneratorExit:
             # 客户端断开：保留已有回答，trace 标记 cancelled。
@@ -248,5 +262,6 @@ class ChatRunner:
                 "cost_cny": cost,
                 "currency": pricing_snapshot().get("currency", "CNY"),
                 "tool_calls": tool_count,
+                "history": (result or {}).get("history"),
             },
         }

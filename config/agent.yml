@@ -1,3 +1,20 @@
 external_data_path: data/external/records.csv
 # LangGraph 会话记忆（checkpointer）落盘位置
 checkpoint_db_path: checkpoints/agent_memory.sqlite3
+
+# 会话历史压缩：只改「本次送给模型的消息视图」，checkpoint 原文与界面历史不动
+history:
+  enabled: true
+  trigger_messages: 16   # 消息条数超过它才压缩，短会话完全不走这条路
+  keep_messages: 8       # 最近多少条保留原文（含当前轮）
+  # 摘要长度上限。这个值只是「请求」，qwen-flash 会超：指令写「一条一个事实」时
+  # 它把一个错误码的每种成因都列一条，600 的上限实际产出 1150 字 / 5.7s。
+  # 改成「一轮问答只写一条、不罗列原因」后才压到 268 字 / 1.6s，且第一轮的 E05 仍在。
+  # 见 agent/history_compressor.py 的 _INSTRUCTION 与 log/probe_cap.py。
+  max_summary_chars: 600
+  max_source_chars: 400  # 单条消息进对话稿时截断长度
+  max_transcript_chars: 12000  # 一次送给摘要模型的对话稿上限，超出只取最近部分
+  cache_threads: 64      # 滚动摘要缓存的会话数，超出按写入顺序淘汰
+  # 摘要单独用轻量模型：实测同一段对话稿 qwen-max 5.0s / qwen-flash 1.5s，
+  # 而这段摘要会卡在首字延迟前面。单价见 config/observability.yml。
+  summarizer_model: qwen-flash

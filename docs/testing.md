@@ -217,6 +217,22 @@
 
 设计取舍：**`_AppTestCase` 基类持有 `setUp/tearDown/login/claim`，`ApiTest` 与 `AuthApiTest` 各自继承**——第一版把 `AuthApiTest` 写成 `ApiTest` 的子类，结果 8 个旧用例被重跑一遍，既慢又让失败信息指错地方。哈希迭代次数在测试里降到 1000，算法与校验逻辑不变。
 
+### 3.12 会话历史压缩单测（51 个）
+
+`tests/test_history_compressor.py`，**全程离线**：摘要器用注入的 `FakeSummarizer`（记录每次入参与 config，返回固定摘要），不调 DashScope。压缩这类代码的风险不在「压不压得动」，而在「压错了会不会污染回答」，所以用例按七个分组铺满（`PlanFoldTest` 6 / `BuildTranscriptTest` 4 / `CompressorViewTest` 17 / `UnsourcedIdentifierTest` 8 / `MergeSummaryIntoSystemTest` 3 / `CompressHistoryMiddlewareTest` 7 / `SummarizeHistoryStatsTest` 6）：
+
+| 分组 | 关键验证点 |
+|---|---|
+| `PlanFoldTest` | 低于 `trigger` 返回 `None`；边界不越过最后一条真实用户消息（**当前轮不折**）；保留段不以 `ToolMessage` 开头（**不拆工具组**，否则模型会收到没有调用记录的孤儿结果）；`after == before - boundary`（摘要不占对话条数）；护栏注入的消息不算「真实用户消息」 |
+| `BuildTranscriptTest` | 工具结果只留工具名不留正文（检索片段体积最大、时效最短）；`AIMessage(tool_calls)` 写成 `[调用工具] name`；护栏消息不进稿；超长消息截断加 `…`；空内容行丢掉 |
+| `CompressorViewTest` | 未触发/关闭时原样返回；触发时视图只剩保留段、摘要走 `stats["summary_text"]`；折叠区没变**复用缓存且摘要 token 为 0**；折叠区变长时**从原文重写而不是链式合并**（断言第二次入参里没有 `【已有摘要】`/`【新增对话】`，但含最早那轮的原文）；不同 thread 不共享缓存；超出 `cache_threads` 淘汰最旧；摘要器抛异常 / 返回空 → 退回完整历史且 `fallback=True`，**失败路径也要把已花掉的 token 记进账**；`usage_sink` 同时收到摘要用量；对话稿超 `max_transcript_chars` 时截断只影响送出去的部分、不影响编造校验用的完整稿；配置从 `agent_conf["history"]` 读取（含 `max_summary_chars` 与配置文件一致）；**摘要调用一定带 `SUMMARY_STREAM_TAG`**（见 P18） |
+| `UnsourcedIdentifierTest` | 凭空出现的 `XG900`/`U123456`/ISO 日期被抓出来；对话稿里真实存在的标识符放行；**紧跟中文的标识符（`E05为悬崖异常`）不被误判**（见 P20）；`2.4G`、`3-6 个月` 这类正常写法不误伤；被拦下时 `reason="unsourced_identifiers"` 且 `unsourced` 记进统计 |
+| `MergeSummaryIntoSystemTest` | 摘要接在 system 消息**末尾**而不是替换它；入参是纯字符串 / `None` 都能处理；模板里带「不要在回答里复述或照搬它的格式」 |
+| `CompressHistoryMiddlewareTest` | context 里没有 compressor 时透传；触发时 `override` **同时**改 `system_message` 与 `messages`；**原 request 不被就地修改**（`override` 是返回新对象）；摘要为空/被校验拦下时不 `override`（否则会把完整历史截掉）；一轮多次模型调用各记一条 stats；摘要器失败仍用完整历史调模型 |
+| `SummarizeHistoryStatsTest` | 一轮多次调用聚合成一条：`compressed_calls`/`fallback_calls`/`duration_ms` 求和，`before_messages` 取最大、`after_messages` 取最小；全是 fallback 时带上 `reason` 与去重后的 `unsourced`（上限 10 个）；空列表返回 `no_model_call` |
+
+设计取舍：`_Request` 是手写的假 request（只有 `messages`/`system_message`/`runtime.context`/`override`），不去构造真的 `ModelRequest`——中间件只用到这四个属性，造假对象能让用例聚焦在「有没有正确 override」上。`FakeSummarizer` 的默认回复刻意只用 `_history()` 里真实出现过的词，否则会被编造校验拦下、导致一批无关用例失败（这个坑踩过一次）。
+
 ## 4. 怎么运行
 
 ```bash
@@ -286,7 +302,7 @@ python eval/calibrate_min_score.py
 | 项 | 结果 |
 |---|---|
 | 数据集校验 | `VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`，0 个错误 |
-| 单元测试 | **160 个全部通过，约 4.5 秒**（M2 前 84 个；M2 后 126 个：新增切分 8、混合检索 20、重排 9、RAG 服务 5；身份上线后 160 个：新增 `test_auth.py` 17、`AuthApiTest` 10、报告归属 4、报告参数补齐 3） |
+| 单元测试 | **211 个全部通过，约 2.4 秒**（M2 前 84 个；M2 后 126 个：新增切分 8、混合检索 20、重排 9、RAG 服务 5；身份上线后 160 个：新增 `test_auth.py` 17、`AuthApiTest` 10、报告归属 4、报告参数补齐 3；历史压缩上线后 211 个：新增 `test_history_compressor.py` 51） |
 | 向量库 | **145 个向量**、145 个唯一 ID、145 段唯一内容、5 个来源/md5 组合、`hnsw:space=cosine`、`split_sig=95ec9f1c38e8`（M2 前：66 个向量、默认 L2） |
 | 索引幂等 | 同一语料第二次 `load_document()` 全部跳过，不重新 embedding、不产生重复 ID |
 | easy 回答级评测 | 80 题全部执行，生成与判分错误 0（M2 后复跑见 5.13） |
@@ -673,6 +689,45 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 - **观测接口不按账号隔离**：alice 登录后 `/usage` 仍显示全量 8 次 / 12,024 tokens，其中大部分是 demo 产生的；这是已知边界（`docs/design.md` 第 7 节第 20 条），本轮没有改。
 - **Streamlit 入口未测**：它直接调 `ReactAgent`、不走 HTTP，因此不受鉴权影响（等价于 `enabled: false` 的行为），本轮没有实跑。
 - **`enabled: false` 只在单测里验证**（无令牌 200、不过滤、不写归属行、`owner_user_id` 为 `None`），没有起真服务复跑。
+
+### 5.15 会话历史压缩（2026-11-13）
+
+**测什么**：长会话折叠成「要点清单 + 最近原文」之后，三件事必须同时成立——① 早期事实还能被召回（压缩不能把第一轮问的 E05 丢掉）；② 摘要不许编造对话里没有的型号/用户 ID/日期；③ checkpoint 与界面历史保持完整、摘要正文不许出现在用户看到的回答里。另外要量化「到底省了多少 token、摘要自己花了多少」。
+
+**怎么测**：三层，全部可复跑。
+
+1. **离线单测 51 个**（`tests/test_history_compressor.py`，摘要器用注入的假对象，不调 DashScope）：折叠边界规则、对话稿构造、缓存复用/从原文重写/失败降级、编造校验、system 消息拼接、中间件接线、统计聚合。
+2. **端到端实跑**（`log/verify_history.py`，真模型真 HTTP）：新开一个 32 位 hex thread，连续 8 轮问答把消息数推过触发线，再打 3 发召回探针——问第一轮的错误码、问第四轮的边刷周期、以及一发**对照题**（问「我提到过我家住在哪个城市吗」，正确答案是「没有」，用来抓编造）。每轮回答都过 `FORBIDDEN` 清单（`U123456`/`XG900`/`E203`/`2024-04-05`/`1.2.3`，都是曾经真实被编造出来的值）和 `contamination()`（回答开头连续 bullet ≥8 行、或含摘要标记就算污染）。最后拉 `/history/{thread}` 检查条数、摘要泄漏、丢问题。报告写 UTF-8 文件 `log/verify_history_report.md`，**控制台只输出 ASCII**——本机控制台会把中文打成乱码，前面有两次因为读乱码而误判。
+3. **确定性 payload A/B**（`log/probe_payload.py <thread_id>`）：跨轮对比 token 是不可靠的，因为每轮是否触发检索会让 payload 差几千 token（第一版就是拿「关掉压缩跑 8 轮」和「开着跑 8 轮」比总量，被工具调用差异污染了）。改成**同一条 thread、同一个当前问题**，分别按完整视图和压缩视图各调一次 qwen-max，读供应商返回的真实 `input_tokens`，再按 `config/observability.yml` 的单价算钱。
+4. **摘要指令调参**（`log/probe_cap.py`）：拿真实 dump 出来的对话稿（`log/dump_summary.py <thread_id>` → `log/dump_transcript.txt`）对比两版指令 × 两个字数上限 × 各跑 2 次，同时看耗时、字数、bullet 条数、输出 tokens，以及 E05/边刷/清水箱三个早期事实是否留住。
+
+**结果**：
+
+| 项 | 观测 |
+|---|---|
+| 单元测试 | 211 个全通过（历史压缩占 51 个），约 2.4 秒 |
+| 触发行为 | 8 轮里第 1–4 轮 `below_trigger`（3/7/11/15 条消息），第 5–8 轮全部触发，`before` 19/21/25/29 → `after` 恒为 8 |
+| 召回 | `recall_turn1_error_code` 命中 E05、`recall_turn4_side_brush` 命中「3 至 6 个月」、对照题正确回答「您并没有提到」；三发都 `fabricated=[]`、`unsourced=None` |
+| 回答污染 | 11 轮全部 `clean`，`answer_contamination=none`（修 P18 之前第 5 轮起每轮都被摘要正文污染） |
+| 界面历史 | 22 条（11 问 11 答，一条不少）、摘要泄漏 **0** 条、丢失提问 **0** 条、持久化历史里的编造标识符 **0** 个 |
+| token（36 条消息） | 完整视图 **3072** input → 压缩视图 **1700** input，省 1372（**-44.7%**）；摘要自身 1485 in / 237 out（qwen-flash） |
+| 成本（每轮） | 主模型省 ¥0.003293，摘要花 ¥0.000578，**净省 ¥0.002715** |
+| 摘要耗时 | 指令改成「一轮问答只写一条」后 0.8–3.4s（改之前 5.7–6.9s）；摘要字数 117–349（改之前 593–690，且无视 600 上限实际写到 1074–1197） |
+| 编造校验精度 | trace 库里 38 次 compress span：17 次真压缩、12 次 `below_trigger`、8 次 `disabled`、**只有 1 次被校验拦下**（接受率 94%），说明校验没有过度触发 |
+| 浏览器 | 打开那条 11 轮会话，`.messages` 渲染 22 行、`summaryMarkerPresent=false`、`worstLeadingBulletRun=0`、E05 出现 3 次，首尾两条回答都是正常话术 |
+
+**为什么这么测**：压缩的收益（省 token）很好量化，风险（丢事实、编造、污染回答）却很容易漏——它不报错，只是**回答悄悄变差**。所以召回探针和 `FORBIDDEN` 清单是这套验证的主角，token 数字只是附带产出。对照题（问一个对话里从没出现过的信息）专门用来抓编造：如果摘要凭空补了字段，这一题就会答出内容而不是「您没提过」。
+
+**用途**：面试追问「长会话怎么办」时，可以直接给出「36 条消息时 payload -44.7%、每轮净省 ¥0.0027、11 轮后界面历史零丢失零泄漏」这组数字，以及「为什么不用官方 `SummarizationMiddleware`」（它会用 `RemoveMessage` 真的改写 state，早期对话就从界面消失了）。
+
+**未测 / 待补**：
+
+- **超长会话未测**：只跑到 36 条 checkpoint 消息。`max_transcript_chars=12000` 的截断分支有单测覆盖，但没有真实百轮会话的实测数据；摘要每轮从原文重写，输入随会话长度线性增长（`docs/design.md` 第 7 节第 5 条已记为已知短板）。
+- **摘要质量的语义评测没有做**：只做了「关键事实字符串是否命中」和「有没有编造标识符」，没有用 LLM-as-judge 去评摘要的完整性/忠实度，也没纳入 `run_answer_eval.py` 的指标体系。
+- **缓存淘汰只在单测里验证**：`cache_threads=64` 的滚动淘汰是纯内存 dict，多 worker / 重启后缓存全丢（会退化成每轮重算，功能不受影响），没有跨进程共享。
+- **视觉层面没有像素级检查**：in-app 浏览器无可见视口（`NATIVE_BROWSER_VIEWPORT_UNAVAILABLE`），截图与真实点击不可用，只能用结构性快照 + JS 驱动 DOM。
+- **摘要模型单点**：只实测了 qwen-flash。qwen-turbo 在本账号下拿不到（HTTPError/429），qwen-max/qwen-plus 太慢（同一段稿 5.0s / 3.3–6.6s），换模型需要复跑 `log/probe_cap.py`。
+- **`enabled: false` 的回归没有自动化**：关闭压缩走的是原路径，单测覆盖了 `disabled` 分支，但没有跑一遍完整评测集对比「开/关压缩」的回答质量差异（需要 easy 全量复跑，成本原因暂缓，见第 8 节）。
 
 ## 6. 这些测试有什么用
 

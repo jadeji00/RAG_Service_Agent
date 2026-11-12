@@ -44,9 +44,9 @@ flowchart LR
 
 - **服务层**：`server/app.py` 只负责 HTTP；`ChatRunner` 把 Agent 事件包装成带 trace、token、成本与 `done` 统计的 SSE 流；前端是单文件 HTML，用 `fetch` + `ReadableStream` 解析。
 - **身份层**：`server/auth.py` 管账号、令牌与会话归属，以 FastAPI 依赖 `current_user` 的形式挂在业务接口上；`thread_owner` 首次写入即认领，`/sessions` 用 `owner_filter` 在截断 limit 之前先过滤，报告链路用登录绑定的业务用户 ID 拦越权。
-- **Agent 内核**：LangChain 1.x `create_agent` + 四个中间件（工具监控/护栏、日志、强制收口、报告提示词兜底切换）。
+- **Agent 内核**：LangChain 1.x `create_agent` + 五个中间件（工具监控/护栏、日志、强制收口、报告提示词兜底切换、历史压缩）。中间件顺序是有意义的：`compress_history` 必须排在 `report_prompt_switch` 之后，因为后者是 `dynamic_prompt`、会整体替换 `system_message`。
 - **RAG**：Chroma（cosine）持久化 + md5/切分签名增量同步；空库自愈；按 QA 结构切分（前言 / Q-A 对 / 【块】 / 编号条目），145 chunks，chunk 带 `section`/`unit`/`mode` 元数据；检索是「向量 + BM25 双路召回 → RRF 融合 → gte-rerank-v2 重排 → min_score 无证据兜底」。
-- **会话**：`SqliteSaver` + `thread_id`，刷新或重启后可恢复；历史全量回灌（待压缩）。报告/拒答子流程用 `update_state` 写回同一 thread。
+- **会话**：`SqliteSaver` + `thread_id`，刷新或重启后可恢复；超过 16 条消息后由 `HistoryCompressor` 把较早轮次折成要点清单并进 system 消息，checkpoint 原文与界面历史保持完整。报告/拒答子流程用 `update_state` 写回同一 thread。
 - **报告线**：`is_report_query` 判断意图后走确定性 `report_pipeline`——解析/补齐 `user_id`、`month`，直接 `fetch_external_data`，把 CSV 记录注入报告提示词，调用一次 `temperature=0` 模型写作；模型不参与工具选择。路由未命中的报告请求才回退 ReAct，`fetch_external_data` 成功仍会兜底切换报告提示词。`fill_context_for_report` 已删除。
 - **越界线**：`scope_router` 先判报告、再判越界、最后问答；越界请求直接返回固定话术，不调用模型。
 - **护栏**：单轮最多 6 次工具调用；相同成功调用只执行一次；失败允许换参数重试一次；参数不合规直接返回 `ToolMessage(status="error")`；连续拦截 2 次注入一次收口提示。
@@ -89,7 +89,7 @@ flowchart LR
 | 4 | **BM25 + 向量混合召回，RRF 融合** | 纯向量 Top-k；分数加权融合 | 型号、错误码等关键词靠 BM25，语义问题靠向量；RRF 不需调分数尺度 | 多一路索引与延迟；需要真实 BM25 实现，不能拿向量库冒充 | **已实施**：`rag/bm25.py` 手写倒排 + BM25（k1=1.5/b=0.75），中文用「单字 + 相邻双字」近似分词，高频字靠 IDF 自动降权，不引 jieba；`mode: vector` 时 BM25 路为空、融合结果等于向量原序，两种模式共用一条代码路径便于 A/B。hard span@1 50% → 65%、source@5 90% → 100% |
 | 5 | **交叉编码器重排**（Top-20 → Top-3） | 不重排；用 LLM 重排 | 重排通常比换 embedding 性价比高；LLM 重排贵且慢 | 增加 100–300ms；模型需可离线/可替换 | **已实施**：DashScope `gte-rerank-v2`，对融合后的 20 条逐条打分；状态码非 200 / 异常 / 空结果一律退回 RRF 顺序并记日志。easy span@1 69.09% → 96.36%，hard span@3 85% → 100%，检索 P50 +119ms（easy）。分数还兼作「无证据」判据：`min_score=0.16` 由 `eval/calibrate_min_score.py` 在 105 题上标定（answerable 最低 0.1673 / in-scope negative 最高 0.1578），命中不足时直接返回固定回答，不调模型 |
 | 6 | **显式路由 + 确定性报告子流程**，不靠模型「自觉」 | 一个 ReAct 循环里塞所有工具 | 报告与问答的工具面、提示词、失败处理不同；显式路由可测 | 规则路由需要维护覆盖率和兜底分支 | **已实施**：`is_report_query` → `report_pipeline`（解析参数 → 固定取数 → 单次写作）；路由未命中回退 ReAct。工具序列由代码保证，`fill_context_for_report` 已删除 |
-| 7 | **SQLite checkpointer 起步** | 直接上 Postgres/Redis | 单机 demo 足够；接口一致，后续可替换 | 多实例不可用；需限制历史长度 | **已实施**（压缩待做） |
+| 7 | **SQLite checkpointer 起步** | 直接上 Postgres/Redis | 单机 demo 足够；接口一致，后续可替换 | 多实例不可用；需限制历史长度 | **已实施**（历史长度由决策 16 的压缩控制） |
 | 8 | **SSE + 统一事件契约**（`meta/delta/tool/notice/done/error`） | WebSocket；前端轮询 | 单向流式足够；HTTP 基础设施简单；事件可断言、可回放 | 断线重连与取消要自己处理 | **已实施**：FastAPI `StreamingResponse`；首 token 与端到端延迟均落账；取消时 trace 记 `cancelled` |
 | 9 | **薄前端**：单页静态 HTML/JS | React SPA、低代码平台 | 简历重点是 Agent/RAG 深度，不是前端工程量 | 页面表现力有限 | **已实施**：单文件 `server/static/index.html`，支持 SSE、停止生成、历史会话切换、近 7 天用量；回答区只保留正文 |
 | 10 | **Token 账本**：usage 回调 → 队列 → 落表 → `/usage` | 只在日志里打印 | 成本是可被追问的硬指标；也是限流与预算的前提 | 需要模型返回 usage；流式下要确认口径 | **已实施**：供应商 `token_usage` 按 `request_id` 去重；缺用量不估算；按配置单价算成本 |
@@ -98,6 +98,8 @@ flowchart LR
 | 13 | **会话列表直接读 checkpoint**，不另建 sessions 表 | 新建会话表并在写入时维护；从 trace 反推 | checkpoint 已是会话内容真源，避免两份状态；trace 只有 M5 之后的记录，会漏历史 | 依赖 `checkpoints` 表结构；自定义 thread_id 不展示 | **已实施**：只列 32 位 hex 的前端线程，标题取首条用户消息，按最后写入排序，时间从 UUIDv6 解析；删除时先清 trace 再删 `writes`/`checkpoints`，只接受同一类线程 ID，避免误删评测数据 |
 | 14 | **演示级身份 + thread 归属表**，用 FastAPI 依赖而不是中间件 | 完整登录/角色/权限系统；JWT 无状态令牌；先不做鉴权 | 简历要的是「会话按账号隔离、越权能被拦住」这条可验证的链路，不是产品级账号体系；依赖注入只作用于声明了它的接口，`/health`、`/auth/bootstrap` 与静态页天然公开，不用维护白名单 | 账号写死在配置里；令牌存 SQLite，每次请求一次查库；无刷新令牌与角色 | **已实施**：`server/auth.py` 用 PBKDF2-SHA256（20 万次迭代、16 字节盐、`hmac.compare_digest`）存密码，`secrets.token_urlsafe(32)` 发令牌并带过期时间；`thread_owner` 表首次写入即认领，别人的线程一律 403；不带 `thread_id` 时服务端发 `uuid4().hex`，不再共用 `"default"`（共用会让第一个用户把 default 占下来、其他人全部 403）；启动时把归属表里没有行的旧会话一次性归到 `legacy_owner`，否则开启鉴权后侧栏会变空；`enabled: false` 是评测脚本 / CLI / Streamlit 的逃生门 |
 | 15 | **报告的越权校验放在取数之前**，用登录绑定的业务用户 ID | 只在提示词里要求模型别查别人；取数后再判断 | 隐私边界不能靠模型自觉；判断放在最前面才能做到「零取数、零 token」 | 需要在报告链路里多传一个 `owner_user_id` 参数 | **已实施**：`check_report_owner` 返回拒答文本时直接短路，`tool_calls=[]`、`no_model_call=True`，账本记 `usage_source="none"` 而不是 `"missing"`。参数解析顺序同时改成「显式入参 > 问题里抽的 > 登录绑定 ID > mock 工具」——登录绑定排在 mock 之前是必需的，否则「我的报告」会被 mock 抽到的随机用户号撞上归属校验，变成拒绝自己的查询（实跑发现的 bug，见 `docs/pitfalls.md` P17） |
+
+| 16 | **历史压缩只改本次请求的视图**（`wrap_model_call` + `ModelRequest.override`），摘要并进 system 消息 | 官方 `SummarizationMiddleware`（`before_model` + `RemoveMessage`）；截断只留最近 N 条；摘要塞成一条 `HumanMessage` | `RemoveMessage` 会真的改写 state，早期对话就从界面和 checkpoint 里消失了，用户翻不回去；截断是硬丢事实；塞 `HumanMessage` 会让模型把摘要的排版当成回答模板 | 每轮多一次摘要调用（卡在首字延迟前面）；摘要本身可能编造，需要额外校验 | **已实施**：`agent/history_compressor.py`。触发 16 条 / 保留 8 条，边界不越过最后一条真实用户消息（当前轮不折）、不拆工具组；摘要按 thread 指纹缓存，折叠区变长时**从原文重写**而不是「旧摘要 + 新增」增量合并；出来后过一道 `find_unsourced_identifiers` 编造校验，摘要里出现对话稿中没有的型号/错误码/ID/日期就整轮放弃压缩。实测 36 条消息时 payload 3072 → 1700 input tokens（**-44.7%**），扣掉摘要自身开销后每轮净省 ¥0.0027；11 轮后界面历史 22 条完整、摘要零泄漏 |
 
 ## 5. 明确不做
 
@@ -123,7 +125,7 @@ flowchart LR
 2. ~~向量库默认 L2 距离，文本检索未改 cosine。~~ 已改 cosine；距离空间只能在创建集合时指定，`VectorStoreService` 检测到不一致会重建集合并重新灌库。
 3. ~~Top-3 纯向量召回，无阈值、无重排、无混合检索（M2）。~~ M2 已完成：QA 切分 + BM25/向量双路 + RRF + `gte-rerank-v2` 重排 + `min_score` 无证据兜底，见第 3 节。
 4. 用户、月份、位置工具仍是随机 mock。
-5. 会话历史全量回灌，无截断/摘要。
+5. ~~会话历史全量回灌，无截断/摘要。~~ 已实施压缩（决策 16）：超过 16 条消息时把较早轮次折成要点清单并进 system 消息，checkpoint 与界面历史不动。剩下的短板是**每轮都从原文重写摘要**，摘要调用的输入随会话长度线性增长（36 条消息时约 1485 tokens / 0.8–3.4s），会话很长时这笔开销会重新变大；改成「只摘新增的那几轮再拼接」可以把每轮成本压成常数，但要额外处理要点条数上限与淘汰顺序，本轮没做。
 6. 回答级评测已有 easy 单次基线、hard split 与 hard pass^3；尚缺 easy 全量 pass^k。
 7. ~~模块导入即构造模型与 RAG 服务，启动失败不易被页面捕获。~~ RAG 改为惰性单例；FastAPI 在 lifespan 中构造 Agent，失败时 `/health` 返回 503 与原因，导入 `server.app` 不触发知识库加载。
 8. ~~报告流程仍可能漏调 `fill_context_for_report`~~：已改为确定性报告子流程，正常报告不再经过 ReAct，`fill` 工具已删除；仅规则路由未命中的请求走 ReAct 兜底（P7）。

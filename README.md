@@ -7,6 +7,7 @@
 - **知识库问答**：按问答对 / 错误码块 / 编号清单做 QA 感知切分（5 个 TXT → 145 chunks），向量化存入 Chroma（cosine）；回答前走「向量 + BM25 双路召回 → RRF 融合 → `gte-rerank-v2` 重排」，取最相关的 3 个片段交给模型。
 - **无证据兜底**：重排最高分低于标定阈值 `min_score` 时，直接返回固定的「知识库里没有相关内容」话术，不调用生成模型、不编造。
 - **多轮对话**：LangGraph checkpointer 把会话写入 SQLite，按 `thread_id` 隔离；侧栏列出历史会话（标题取首个问题），点击即可切换，刷新页面也能恢复；每条会话右侧常驻 × 按钮可删除，二次确认后连同该会话的 trace 一起清理。
+- **长会话压缩**：消息数超过阈值后，把较早的轮次折成一份要点清单（qwen-flash 生成）接进 system 消息，只把最近 8 条原文交给主模型；checkpoint 与界面历史**一字不改**，用户照样能翻回早期对话。摘要按会话指纹缓存，出来后还要过一道编造校验——摘要里出现对话中没有的型号 / 用户 ID / 错误码 / 日期就本轮放弃压缩。实测 36 条消息时 payload 3072 → 1700 input tokens（-44.7%），扣掉摘要开销每轮净省 ¥0.0027，11 轮后界面历史 22 条完整、摘要零泄漏。
 - **登录与会话归属**：演示级账号（PBKDF2-SHA256 加盐哈希 + 随机令牌，存 SQLite，重启不掉线）；会话按 `thread_id` 认领归属，别人换个线程 ID 也读不到你的历史，侧栏只列自己的会话；登录账号绑定的业务用户 ID 会拦下「查别人使用报告」的请求——不取数、不调模型、零 token。
 - **报告生成**：规则路由识别报告意图后走确定性流程——解析用户 ID/月份、直接取数、把记录注入报告提示词，模型只负责一次写作；不依赖模型是否记得调用标记工具。
 - **流式 HTTP 服务**：FastAPI + SSE，按 token 推送回答，同时推送路由、工具开始/结束、错误与最终统计；自带单文件前端，支持会话切换与用量查看。
@@ -33,9 +34,10 @@ AI_RAG_Agent/
 │  ├─ report_pipeline.py   # 确定性报告流程：解析 → 取数 → 单次写作
 │  ├─ scope_router.py      # 报告/越界/问答三路确定性路由
 │  ├─ guardrails.py        # 参数校验、工具预算、重复调用拦截
+│  ├─ history_compressor.py # 长会话折叠：要点清单 + 最近原文（含编造校验）
 │  └─ tools/
 │     ├─ agent_tools.py    # RAG、报告数据、用户/月份/天气等工具
-│     └─ middleware.py     # 工具监控、护栏、日志、报告提示词兜底切换
+│     └─ middleware.py     # 工具监控、护栏、日志、报告提示词兜底切换、历史压缩
 ├─ observability/
 │  ├─ usage.py             # token 用量提取与去重
 │  ├─ pricing.py           # 按配置单价估算成本
@@ -53,7 +55,7 @@ AI_RAG_Agent/
 ├─ data/                   # 知识库文件 + external/records.csv
 ├─ eval/                   # 80 题 easy + 25 题 hard 评测集、脚本、阈值标定与基线
 ├─ docs/                   # 设计、踩坑、测试说明
-├─ tests/                  # 纯函数、切分、检索管线、护栏、API 与事件流测试
+├─ tests/                  # 纯函数、切分、检索管线、护栏、历史压缩、API 与事件流测试
 ├─ utils/                  # 配置、日志、路径、文件、提示词加载
 └─ requirements.txt
 ```
@@ -160,7 +162,7 @@ python -m agent.react_agent
 - `data/external/records.csv`：报告用的使用记录，必需列：`用户ID, 特征, 清洁效率, 耗材, 对比, 时间`。
 - `config/chroma.yml`：集合名、持久化目录、Top-K（默认 3）、距离度量（`cosine`）、切分模式（`qa_aware` / `recursive`）、单元字数上限与分隔符。
 - `config/rag.yml`：对话模型与 embedding 模型名称；`retrieval` 段配置混合召回（`mode` / 两路候选数 / `rrf_k`）与重排（`enabled` / `model` / `candidates` / `min_score`）。
-- `config/agent.yml`：外部数据路径、SQLite checkpointer 路径（默认 `checkpoints/agent_memory.sqlite3`）。
+- `config/agent.yml`：外部数据路径、SQLite checkpointer 路径（默认 `checkpoints/agent_memory.sqlite3`）；`history` 段配置长会话压缩（`enabled` / 触发条数 `trigger_messages` / 保留条数 `keep_messages` / 摘要字数上限 / 单条截断 / 对话稿上限 / 缓存会话数 / 摘要模型 `summarizer_model`）。不想压缩就把 `enabled` 改成 `false`，其余链路完全不变。
 - `config/observability.yml`：trace 数据库路径（默认 `checkpoints/observability.sqlite3`）、模型单价与币种。单价按官方价目表填写；未配置单价的模型只记 token，不估算成本。
 - `config/auth.yml`：是否启用登录、身份库路径（默认 `checkpoints/auth.sqlite3`，已 gitignore）、令牌有效期、PBKDF2 迭代次数、演示账号（用户名 / 显示名 / 密码 / 绑定的业务用户 ID）与旧会话归属者 `legacy_owner`。演示密码可以用环境变量 `AUTH_DEMO_PASSWORD` 覆盖（只对新写入的账号生效）；要彻底重置，删掉身份库重启即可。
 
@@ -198,7 +200,7 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
   --repeat 3 --out eval/results/hard_pass3.json   # pass^3
 python eval/calibrate_min_score.py                # 标定无证据阈值（约 40 秒）
-python -m unittest discover -s tests              # 160 个单测，不需要 API Key
+python -m unittest discover -s tests              # 211 个单测，不需要 API Key
 ```
 
 检索基线（145 chunks、`text-embedding-v4`、向量 + BM25 + RRF + `gte-rerank-v2`、k=8）：
@@ -253,5 +255,8 @@ M2 前是 easy 完全正确 81.82% / 完全有据 100.00%，hard 通过率 95.00
 - **接口一律 401**：令牌缺失、过期（默认 12 小时）或身份库被删。前端会自动退回登录面板；用 curl 时记得带 `Authorization: Bearer <token>`，裸令牌和其他 scheme 都不认。
 - **侧栏会话突然空了**：多半是换了账号——会话按归属过滤，只列自己名下的。登录功能上线前的旧会话会在启动时归到 `config/auth.yml` 的 `legacy_owner`（默认 `demo`），日志里能看到「已把 N 个旧会话归到 legacy_owner 名下」。
 - **报告回「只能查询当前登录账号自己的使用记录」**：请求里的用户 ID 和登录账号绑定的 ID 不一致。换成自己的 ID，或用那个 ID 对应的账号登录；不需要这层校验就把 `config/auth.yml` 的 `enabled` 设为 `false`。
+- **长会话回答变慢、首字等很久**：多半是历史压缩在跑摘要。看日志里的 `[history] 压缩 N→M 条（摘要 X 字…）`，或 trace 里 `history:compress` span 的 `duration_ms`。摘要模型在 `config/agent.yml` 的 `history.summarizer_model`（默认 qwen-flash，实测 0.8–3.4s；换成 qwen-max 会到 5s 以上）；不想压缩就把 `history.enabled` 改成 `false`。
+- **回答开头冒出一长串要点清单**：这是摘要模型的增量串进了回答流（`docs/pitfalls.md` P18）。检查摘要调用是否带 `SUMMARY_STREAM_TAG`、`iter_chat` 里的 tag 过滤是否还在 `account.add()` 之前。
+- **日志出现「摘要含无来源标识符，本轮不压缩」**：编造校验拦下了这次摘要——摘要里写了对话中没出现过的型号 / 错误码 / 用户 ID / 日期。本轮会退回完整历史，功能不受影响，只是没省到 token；偶发是正常的，频繁出现说明摘要模型太弱，换 `summarizer_model`。
 - **想换掉演示密码**：设环境变量 `AUTH_DEMO_PASSWORD` 后删掉 `checkpoints/auth.sqlite3` 重启（已存在的账号不会被覆盖）。
 - **端口被占用**：FastAPI 用 `--port 8001`；Streamlit 用 `streamlit run app.py --server.port 8502`。
