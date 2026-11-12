@@ -1,2 +1,12 @@
 chat_model_name: qwen-max
 embedding_model_name: text-embedding-v4
+
+# ===== 检索管线 =====
+# mode: hybrid = 向量 + BM25 双路召回后 RRF 融合；vector = 只走向量（评测 A/B 用）。
+# 候选数指每一路各取多少条去融合，最终返回条数仍由 chroma.yml 的 k 或调用方传入的 k 决定。
+# rrf_k 是 RRF 的平滑常数，越大越「平权」，60 是论文里的常用默认值。
+retrieval:
+  mode: hybrid
+  vector_candidates: 20
+  bm25_candidates: 20
+  rrf_k: 60

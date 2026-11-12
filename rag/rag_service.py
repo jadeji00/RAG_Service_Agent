@@ -1,41 +1,51 @@
 from agent.scope_router import OUT_OF_SCOPE_ANSWER, is_out_of_scope_query
+from rag.hybrid_retriever import HybridRetriever
 from rag.vector_store import VectorStoreService
+from utils.config_handler import chroma_conf, rag_conf
 from utils.prompt_loader import load_rag_prompts
 from langchain_core.prompts import PromptTemplate
 from model.factory import chat_model
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
 
+# 检索管线的可调参数：mode=vector 时退化成纯向量召回，方便评测做 A/B。
+_retrieval_conf = rag_conf.get("retrieval") or {}
 
-# def print_prompt(prompt):
-#     print('='*20)
-#     print(prompt.to_string())
-#     print('='*20)
-#     return prompt
 
 class RagSummarizeService(object):
     def __init__(self):
         self.vector_store = VectorStoreService()
-        self.retriever = self.vector_store.get_retriever()
+        self.pipeline = HybridRetriever(
+            self.vector_store,
+            mode=_retrieval_conf.get("mode", "hybrid"),
+            vector_candidates=int(_retrieval_conf.get("vector_candidates", 20)),
+            bm25_candidates=int(_retrieval_conf.get("bm25_candidates", 20)),
+            rrf_k=int(_retrieval_conf.get("rrf_k", 60)),
+        )
         self.prompt_text = load_rag_prompts()
         self.prompt_template = PromptTemplate.from_template(self.prompt_text)
         self.model = chat_model
         self.chain = self._init_chain()
-
 
     def _init_chain(self):
         chain = self.prompt_template | self.model | StrOutputParser()
         return chain
 
     def ensure_knowledge_base(self) -> int:
-        """启动时检查向量库；空库自动重建，有数据则同步变更。"""
-        return self.vector_store.ensure_knowledge_base()
+        """启动时检查向量库；空库自动重建，有数据则同步变更，最后刷新 BM25 索引。"""
+        count = self.vector_store.ensure_knowledge_base()
+        self.pipeline.refresh()
+        return count
+
+    def retrieve_with_stats(self, query: str, k: int | None = None) -> tuple[list[Document], dict]:
+        """检索并附带召回统计（各路候选数、融合数、延迟），供观测和引用溯源使用。"""
+        limit = k if k is not None else chroma_conf["k"]
+        result = self.pipeline.search(query, limit)
+        return result.documents, result.stats
 
     def retrieve(self, query: str, k: int | None = None) -> list[Document]:
         """只负责检索，返回原始 Document，供评测和上层回答复用。"""
-        if k is None:
-            return self.retriever.invoke(query)
-        return self.vector_store.get_retriever(k=k).invoke(query)
+        return self.retrieve_with_stats(query, k)[0]
 
     def build_context(self, context_docs: list[Document]) -> str:
         """把检索结果拼成提示词里的参考资料区，保持原有编号格式。"""
@@ -58,13 +68,10 @@ class RagSummarizeService(object):
             }
         )
 
-    def retriever_docs(self, query: str) -> list[Document]:
-        """兼容旧调用名，等价于 retrieve(query)。"""
-        return self.retrieve(query)
-
     def rag_summarize(self, query: str) -> str:
         """检索 + 生成的一条龙入口，供 Agent 工具继续使用。"""
         return self.answer(query, self.retrieve(query))
+
 
 if __name__ == '__main__':
     rag = RagSummarizeService()
