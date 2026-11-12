@@ -164,6 +164,39 @@
       background: var(--warm-soft);
       color: #76501a; font-size: 12.5px; border-radius: 0 10px 10px 0;
     }
+    .sources {
+      margin-top: 10px;
+      border: 1px solid var(--line); border-radius: 12px;
+      background: var(--panel); overflow: hidden;
+    }
+    .sources > summary {
+      cursor: pointer; list-style: none; user-select: none;
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; font-size: 12.5px; color: var(--muted);
+    }
+    .sources > summary::-webkit-details-marker { display: none; }
+    .sources > summary:hover { color: var(--accent-ink); background: var(--accent-soft); }
+    .sources .caret { font-size: 9px; transition: transform .15s ease; }
+    .sources[open] .caret { transform: rotate(90deg); }
+    .sources .count {
+      padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+      background: var(--accent-soft); color: var(--accent-ink);
+    }
+    .sources ol {
+      margin: 0; padding: 2px 12px 8px; list-style: none;
+      border-top: 1px solid var(--line);
+    }
+    .sources li { padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 12.5px; }
+    .sources li:last-child { border-bottom: none; }
+    .sources .src-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .sources .src-n { color: var(--faint); font-variant-numeric: tabular-nums; }
+    .sources .src-file { font-weight: 600; color: var(--accent-ink); }
+    .sources .src-loc { color: var(--muted); }
+    .sources .src-score {
+      margin-left: auto; color: var(--muted);
+      font-size: 11.5px; font-variant-numeric: tabular-nums;
+    }
+    .sources .src-preview { margin-top: 3px; color: var(--faint); line-height: 1.55; }
     .thinking {
       display: none; align-items: center; gap: 10px;
       padding: 0 34px 10px; color: var(--muted); font-size: 12.5px;
@@ -740,6 +773,67 @@
       div.textContent = text;
       target.appendChild(div);
     }
+    function renderSources(row, sources) {
+      const list = (Array.isArray(sources) ? sources : []).filter((item) => item && (item.file || item.preview));
+      const target = row.querySelector('.notice-target');
+      const previous = target.querySelector('.sources');
+      if (previous) previous.remove();
+      if (!list.length) return;
+
+      const details = document.createElement('details');
+      details.className = 'sources';
+      const summary = document.createElement('summary');
+      const caret = document.createElement('span');
+      caret.className = 'caret';
+      caret.textContent = '▶';
+      const label = document.createElement('span');
+      label.textContent = '引用来源';
+      const count = document.createElement('span');
+      count.className = 'count';
+      count.textContent = String(list.length);
+      summary.append(caret, label, count);
+
+      const ol = document.createElement('ol');
+      for (const item of list) {
+        const li = document.createElement('li');
+        const head = document.createElement('div');
+        head.className = 'src-head';
+        if (item.n != null) {
+          const n = document.createElement('span');
+          n.className = 'src-n';
+          n.textContent = String(item.n);
+          head.appendChild(n);
+        }
+        const file = document.createElement('span');
+        file.className = 'src-file';
+        file.textContent = item.file || '未命名文件';
+        head.appendChild(file);
+        const where = [item.section, item.unit].filter(Boolean).join(' · ');
+        if (where) {
+          const loc = document.createElement('span');
+          loc.className = 'src-loc';
+          loc.textContent = where;
+          head.appendChild(loc);
+        }
+        // 重排关闭或降级时后端给的是 null，这时不显示分数，而不是显示 0。
+        if (typeof item.score === 'number') {
+          const score = document.createElement('span');
+          score.className = 'src-score';
+          score.textContent = `相关度 ${item.score.toFixed(3)}`;
+          head.appendChild(score);
+        }
+        li.appendChild(head);
+        if (item.preview) {
+          const preview = document.createElement('div');
+          preview.className = 'src-preview';
+          preview.textContent = item.preview;
+          li.appendChild(preview);
+        }
+        ol.appendChild(li);
+      }
+      details.append(summary, ol);
+      target.appendChild(details);
+    }
     function formatMs(ms) {
       if (ms == null) return '—';
       if (ms < 1000) return `${Math.round(ms)}ms`;
@@ -775,6 +869,7 @@
           lastRaw = data.answer;
           row.querySelector('.bubble').innerHTML = renderMarkdown(lastRaw);
         }
+        renderSources(row, data.sources);
         hideThinking();
         setBusy(false);
         scrollToBottom();
@@ -1116,6 +1211,7 @@
           } else {
             const row = addAssistant();
             row.querySelector('.bubble').innerHTML = renderMarkdown(message.content);
+            renderSources(row, message.sources);
           }
         }
         scrollToBottom(true);

@@ -37,9 +37,15 @@ def ensure_rag_ready() -> int:
     return get_rag().ensure_knowledge_base()
 
 
-@tool(description='从向量存储中检索参考资料')
-def rag_summarize(query: str) -> str:
-    return get_rag().rag_summarize(query)
+@tool(description='从向量存储中检索参考资料', response_format='content_and_artifact')
+def rag_summarize(query: str) -> tuple[str, dict]:
+    """返回 ``(回答正文, 引用附件)``。
+
+    附件走 ``content_and_artifact`` 通道，只落到 ToolMessage.artifact 上给界面和
+    trace 用，不会进模型上下文——多带的引用信息一个 token 都不花。
+    """
+    answer, sources, stats = get_rag().answer_with_citations(query)
+    return answer, {'sources': sources, 'retrieval': stats}
 
 
 @tool(description='获取城市天气，以信息字符串形式返回')

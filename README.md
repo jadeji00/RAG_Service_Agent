@@ -6,6 +6,7 @@
 
 - **知识库问答**：按问答对 / 错误码块 / 编号清单做 QA 感知切分（5 个 TXT → 145 chunks），向量化存入 Chroma（cosine）；回答前走「向量 + BM25 双路召回 → RRF 融合 → `gte-rerank-v2` 重排」，取最相关的 3 个片段交给模型。
 - **无证据兜底**：重排最高分低于标定阈值 `min_score` 时，直接返回固定的「知识库里没有相关内容」话术，不调用生成模型、不编造。
+- **回答引用溯源**：每轮问答把检索到的片段以「文件 / 小节 / 片段 / 重排相关度」的形式随 `done` 事件返回，界面上是一个默认折叠的「引用来源」面板，展开即可核对回答的出处；引用条目挂在 `ToolMessage.artifact` 上，不进模型上下文（零额外 token），但会随 checkpoint 落库，所以刷新页面或切回旧会话仍能看到当时的出处。越界拒答、报告、无证据兜底和模型自行作答（没检索）这四类一律不显示引用——没有依据就不假装有依据。
 - **多轮对话**：LangGraph checkpointer 把会话写入 SQLite，按 `thread_id` 隔离；侧栏列出历史会话（标题取首个问题），点击即可切换，刷新页面也能恢复；每条会话右侧常驻 × 按钮可删除，二次确认后连同该会话的 trace 一起清理。
 - **长会话压缩**：消息数超过阈值后，把较早的轮次折成一份要点清单（qwen-flash 生成）接进 system 消息，只把最近 8 条原文交给主模型；checkpoint 与界面历史**一字不改**，用户照样能翻回早期对话。摘要按会话指纹缓存，出来后还要过一道编造校验——摘要里出现对话中没有的型号 / 用户 ID / 错误码 / 日期就本轮放弃压缩。实测 36 条消息时 payload 3072 → 1700 input tokens（-44.7%），扣掉摘要开销每轮净省 ¥0.0027，11 轮后界面历史 22 条完整、摘要零泄漏。
 - **登录与会话归属**：演示级账号（PBKDF2-SHA256 加盐哈希 + 随机令牌，存 SQLite，重启不掉线）；会话按 `thread_id` 认领归属，别人换个线程 ID 也读不到你的历史，侧栏只列自己的会话；登录账号绑定的业务用户 ID 会拦下「查别人使用报告」的请求——不取数、不调模型、零 token。
@@ -43,7 +44,8 @@ AI_RAG_Agent/
 │  ├─ pricing.py           # 按配置单价估算成本
 │  └─ store.py             # SQLite trace/span 与用量汇总
 ├─ rag/
-│  ├─ rag_service.py       # 检索 + 总结链（越界拒答、无证据兜底）
+│  ├─ rag_service.py       # 检索 + 总结链（越界拒答、无证据兜底、引用条目）
+│  ├─ citations.py         # 引用条目构造、多次检索合并去重、检索统计汇总
 │  ├─ hybrid_retriever.py  # 向量 + BM25 → RRF 融合 → 重排 → 截断
 │  ├─ bm25.py              # 手写 BM25：ASCII 整词 + 中文单字/双字
 │  ├─ reranker.py          # DashScope gte-rerank-v2，失败退回融合序
@@ -200,7 +202,7 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
   --repeat 3 --out eval/results/hard_pass3.json   # pass^3
 python eval/calibrate_min_score.py                # 标定无证据阈值（约 40 秒）
-python -m unittest discover -s tests              # 211 个单测，不需要 API Key
+python -m unittest discover -s tests              # 247 个单测，不需要 API Key
 ```
 
 检索基线（145 chunks、`text-embedding-v4`、向量 + BM25 + RRF + `gte-rerank-v2`、k=8）：
@@ -258,5 +260,7 @@ M2 前是 easy 完全正确 81.82% / 完全有据 100.00%，hard 通过率 95.00
 - **长会话回答变慢、首字等很久**：多半是历史压缩在跑摘要。看日志里的 `[history] 压缩 N→M 条（摘要 X 字…）`，或 trace 里 `history:compress` span 的 `duration_ms`。摘要模型在 `config/agent.yml` 的 `history.summarizer_model`（默认 qwen-flash，实测 0.8–3.4s；换成 qwen-max 会到 5s 以上）；不想压缩就把 `history.enabled` 改成 `false`。
 - **回答开头冒出一长串要点清单**：这是摘要模型的增量串进了回答流（`docs/pitfalls.md` P18）。检查摘要调用是否带 `SUMMARY_STREAM_TAG`、`iter_chat` 里的 tag 过滤是否还在 `account.add()` 之前。
 - **日志出现「摘要含无来源标识符，本轮不压缩」**：编造校验拦下了这次摘要——摘要里写了对话中没出现过的型号 / 错误码 / 用户 ID / 日期。本轮会退回完整历史，功能不受影响，只是没省到 token；偶发是正常的，频繁出现说明摘要模型太弱，换 `summarizer_model`。
+- **回答下面没有「引用来源」面板**：先确认这一轮真的检索了——trace 里没有 `rag:retrieve` span 就说明模型没调 `rag_summarize`（越界拒答、报告、无证据兜底、或它直接凭自己的知识作答），此时不显示引用是设计如此。检索过却没有引用，检查 `rag_summarize` 是否还是 `content_and_artifact`、`monitor_tool` 里的 `_capture_citations` 是否还在。
+- **引用条目没有相关度分数**：重排被关掉或调用失败退回了融合序，`metadata` 里就没有 `rerank_score`。界面这时不显示分数，而不是显示 0（0 会被读成「完全不相关」）。看 trace 的 `rag:retrieve` span，`rerank` 字段是 `ok` / `fallback` / `disabled`。
 - **想换掉演示密码**：设环境变量 `AUTH_DEMO_PASSWORD` 后删掉 `checkpoints/auth.sqlite3` 重启（已存在的账号不会被覆盖）。
 - **端口被占用**：FastAPI 用 `--port 8001`；Streamlit 用 `streamlit run app.py --server.port 8502`。

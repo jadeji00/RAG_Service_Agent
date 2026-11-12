@@ -120,7 +120,16 @@ class HybridRetriever:
             return pool, {"rerank": "fallback", "rerank_pool": len(pool)}
 
         ranked = [(outcome.scores[index], index) for index in outcome.order]
-        kept = [pool[index] for score, index in ranked if score >= self.min_score]
+        # 必须复制一份再加分数：BM25 那一路返回的是缓存语料里的同一个对象，
+        # 原地写 metadata 会把「上一个 query 的相关度」留给下一个 query。
+        kept = [
+            Document(
+                page_content=pool[index].page_content,
+                metadata={**(pool[index].metadata or {}), "rerank_score": round(score, 4)},
+            )
+            for score, index in ranked
+            if score >= self.min_score
+        ]
         stats = {
             "rerank": "ok",
             "rerank_model": outcome.model,

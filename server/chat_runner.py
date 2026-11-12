@@ -177,6 +177,25 @@ class ChatRunner:
                             else "ok",
                             detail=history_stats,
                         )
+                    retrieval = event.get("retrieval") or {}
+                    if retrieval.get("calls"):
+                        # 检索侧的耗时只含召回+重排，不含生成；tool span 记的是
+                        # 整个工具调用的墙钟时间，两者互补。
+                        self.store.add_span(
+                            trace_id,
+                            "rag:retrieve",
+                            "retrieval",
+                            duration_ms=round(
+                                float(retrieval.get("vector_latency_ms") or 0.0)
+                                + float(retrieval.get("bm25_latency_ms") or 0.0)
+                                + float(retrieval.get("rerank_latency_ms") or 0.0),
+                                2,
+                            ),
+                            detail={
+                                **retrieval,
+                                "sources": len(event.get("sources") or []),
+                            },
+                        )
 
         except GeneratorExit:
             # 客户端断开：保留已有回答，trace 标记 cancelled。
@@ -263,5 +282,6 @@ class ChatRunner:
                 "currency": pricing_snapshot().get("currency", "CNY"),
                 "tool_calls": tool_count,
                 "history": (result or {}).get("history"),
+                "sources": (result or {}).get("sources") or [],
             },
         }

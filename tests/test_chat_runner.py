@@ -169,5 +169,95 @@ class ChatRunnerTest(unittest.TestCase):
         self.assertEqual(trace["total_tokens"], None)
 
 
+SOURCES = [
+    {
+        "n": 1,
+        "file": "维护保养.txt",
+        "section": "耗材更换周期（参考）",
+        "unit": "1-7",
+        "score": 0.334,
+        "preview": "边刷 3–6 个月更换一次",
+    }
+]
+RETRIEVAL = {
+    "calls": 1,
+    "mode": "hybrid",
+    "index_size": 145,
+    "vector_candidates": 20,
+    "bm25_candidates": 14,
+    "fused_candidates": 24,
+    "overlap": 10,
+    "rerank_kept": 6,
+    "rerank": "ok",
+    "rerank_top_score": 0.334,
+    "vector_latency_ms": 149.09,
+    "bm25_latency_ms": 0.09,
+    "rerank_latency_ms": 103.75,
+}
+
+
+class ChatRunnerCitationTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.store = TraceStore(str(Path(self.tmp.name) / "obs.sqlite3"))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def run_with_result(self, result_event):
+        events = _events()[:-1] + [result_event]
+        runner = ChatRunner(FakeAgent(events), store=self.store, model_name="qwen-max")
+        streamed = list(runner.stream("边刷多久换一次", thread_id="th-cite"))
+        return streamed[-1]["data"], self.store.get_trace(streamed[-1]["data"]["trace_id"])
+
+    def test_done_carries_sources_and_retrieval_span(self):
+        done, trace = self.run_with_result(
+            {
+                "type": "result",
+                "route": "qa",
+                "answer": "先拆滤网。",
+                "sources": SOURCES,
+                "retrieval": RETRIEVAL,
+            }
+        )
+        self.assertEqual(done["sources"], SOURCES)
+        kinds = [span["kind"] for span in trace["spans"]]
+        self.assertEqual(kinds, ["route", "tool", "retrieval"])
+
+        span = [span for span in trace["spans"] if span["kind"] == "retrieval"][0]
+        # 检索 span 只算召回+重排，不含生成，所以是三段延迟相加。
+        self.assertEqual(span["duration_ms"], 252.93)
+        self.assertEqual(span["detail"]["fused_candidates"], 24)
+        self.assertEqual(span["detail"]["overlap"], 10)
+        self.assertEqual(span["detail"]["rerank"], "ok")
+        # 引用条数落在 span 里，事后能查「这一轮检索到几条、真用上了几条」。
+        self.assertEqual(span["detail"]["sources"], 1)
+
+    def test_result_without_retrieval_has_no_span_and_no_sources(self):
+        done, trace = self.run_with_result(
+            {"type": "result", "route": "qa", "answer": "先拆滤网。"}
+        )
+        self.assertEqual(done["sources"], [])
+        self.assertEqual(
+            [span["kind"] for span in trace["spans"]], ["route", "tool"]
+        )
+
+    def test_zero_retrieval_calls_makes_no_span(self):
+        # 模型没调检索工具时 retrieval 是 {"calls": 0}，不能落一条空 span。
+        done, trace = self.run_with_result(
+            {
+                "type": "result",
+                "route": "qa",
+                "answer": "扫地机不能测血糖。",
+                "sources": [],
+                "retrieval": {"calls": 0},
+            }
+        )
+        self.assertEqual(done["sources"], [])
+        self.assertEqual(
+            [span["kind"] for span in trace["spans"]], ["route", "tool"]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

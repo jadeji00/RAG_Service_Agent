@@ -197,7 +197,10 @@ class RerankStageTest(unittest.TestCase):
             self.store, mode="vector", vector_candidates=4, reranker=reranker
         )
         result = retriever.search("E05", k=2)
-        self.assertEqual(result.documents[0], CORPUS[0])
+        # 重排成功时返回的是带分数的副本：正文和来源不变，多一个 rerank_score。
+        self.assertEqual(result.documents[0].page_content, CORPUS[0].page_content)
+        self.assertEqual(result.documents[0].metadata["source"], "故障排除.txt")
+        self.assertEqual(result.documents[0].metadata["rerank_score"], 0.95)
         self.assertEqual(result.stats["rerank"], "ok")
         self.assertEqual(result.stats["rerank_top_score"], 0.95)
         self.assertEqual(result.stats["rerank_usage_tokens"], 7)
@@ -209,7 +212,13 @@ class RerankStageTest(unittest.TestCase):
             self.store, mode="vector", vector_candidates=4, reranker=reranker, min_score=0.05
         )
         result = retriever.search("E05", k=4)
-        self.assertEqual(result.documents, [CORPUS[0], CORPUS[1]])
+        self.assertEqual(
+            [doc.page_content for doc in result.documents],
+            [CORPUS[0].page_content, CORPUS[1].page_content],
+        )
+        self.assertEqual(
+            [doc.metadata["rerank_score"] for doc in result.documents], [0.4, 0.2]
+        )
         self.assertEqual(result.stats["rerank_kept"], 2)
 
     def test_all_below_threshold_returns_empty(self):
@@ -242,6 +251,31 @@ class RerankStageTest(unittest.TestCase):
         )
         retriever.search("E05", k=4)
         self.assertEqual(reranker.calls[0][1], 4)
+
+    def test_rerank_does_not_write_scores_into_cached_corpus(self):
+        """BM25 路返回的是缓存语料里的同一个对象，分数只能写在副本上。
+
+        原地写 metadata 会让下一次检索看到「上一个 query 的相关度」，
+        而且这个 bug 只在混合模式下出现，向量模式的假检索器每次都给新列表。
+        """
+        retriever = HybridRetriever(
+            self.store,
+            mode="hybrid",
+            vector_candidates=4,
+            bm25_candidates=4,
+            reranker=StubReranker(ranked=[(0, 0.9), (1, 0.5), (2, 0.3), (3, 0.1)]),
+        )
+        first = retriever.search("E05 报错怎么处理", k=4)
+        self.assertTrue(any("rerank_score" in doc.metadata for doc in first.documents))
+        for document in CORPUS:
+            self.assertNotIn("rerank_score", document.metadata)
+
+        # 第二次换个问法，缓存语料里的分数不能被复用。
+        retriever.reranker = StubReranker(ranked=[(0, 0.2), (1, 0.1), (2, 0.05), (3, 0.01)])
+        second = retriever.search("拖布多久洗一次", k=4)
+        self.assertEqual(second.documents[0].metadata["rerank_score"], 0.2)
+        for document in CORPUS:
+            self.assertNotIn("rerank_score", document.metadata)
 
 
 if __name__ == "__main__":

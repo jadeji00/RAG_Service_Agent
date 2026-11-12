@@ -233,6 +233,23 @@
 
 设计取舍：`_Request` 是手写的假 request（只有 `messages`/`system_message`/`runtime.context`/`override`），不去构造真的 `ModelRequest`——中间件只用到这四个属性，造假对象能让用例聚焦在「有没有正确 override」上。`FakeSummarizer` 的默认回复刻意只用 `_history()` 里真实出现过的词，否则会被编造校验拦下、导致一批无关用例失败（这个坑踩过一次）。
 
+### 3.13 引用溯源单测（36 个）
+
+分散在 5 个文件里，**全部离线**（不检索、不调模型）：`tests/test_citations.py` 22 个（`BuildSourcesTest` 6 / `LoadHistoryCitationTest` 6 / `MergeSourcesTest` 7 / `SummarizeRetrievalStatsTest` 3），`test_middleware.py` 的 `CitationCaptureTest` 7 个，`test_rag_service.py` 的 `RagServiceCitationTest` 3 个，`test_chat_runner.py` 的 `ChatRunnerCitationTest` 3 个，`test_hybrid_retrieval.py` 的 `RerankStageTest` 多 1 个。
+
+| 分组 | 关键验证点 |
+|---|---|
+| `BuildSourcesTest` | 编号跟检索顺序一致；**绝对路径只留文件名**（Windows 反斜杠与 POSIX 正斜杠都要能剥掉，否则会把服务器目录结构推到浏览器）；没有 `rerank_score` 时是 `None` 而不是 `0`（0 会被读成「完全不相关」）；预览压掉换行并截到 `PREVIEW_CHARS`；缺元数据时字段是空串而不是 `KeyError` |
+| `MergeSourcesTest` | 同一段资料被两次检索命中只留一条，**分数取较高的那次**；顺序按首次出现、编号连续重排；`None` 分数能被后来的真实分数替换；超过 `MAX_SOURCES` 截断；`None`/字符串/空列表这类脏输入被忽略；**不就地修改入参** |
+| `SummarizeRetrievalStatsTest` | 空列表返回 `{"calls": 0}`；候选数、重叠数、三段延迟、重排 token 求和；`mode`/`index_size` 取最后一次；`rerank_top_score` 取最大值（代表这一轮最强的一条证据）；`rerank` 是去重排序后拼接（`fallback,ok` 说明这一轮有一次重排挂了）；非 dict 项被忽略 |
+| `CitationCaptureTest` | artifact 里的 `sources`/`retrieval` 被收进 `context`；两次调用按顺序累积；**没有 artifact 的工具（`get_weather`）不会凭空造出 `sources_raw` 键**；引用为空时不收集（无证据兜底不该留下「检索过一次」的假记录）；工具抛异常 / 被护栏拦截时都不收集；`context` 为 `None` 时工具照常返回 artifact 不报错 |
+| `RagServiceCitationTest` | 正常路径返回 `(回答, 引用, 统计)` 三元组、统计原样透出、分数原样带出；**越界拒答返回空引用**（那条回答一个字都没用到检索结果，列出「参考资料」等于暗示它有依据）；无证据兜底返回空引用 |
+| `ChatRunnerCitationTest` | `done` 带 `sources`；有检索时多一条 `kind="retrieval"` 的 span，`duration_ms` = 向量+BM25+重排三段相加（**不含生成**，与 tool span 的整段墙钟时间互补），`detail` 里带引用条数；result 事件没有 `retrieval` 时 `sources` 是 `[]` 且不落空 span；`retrieval={"calls":0}` 同样不落 span |
+| `LoadHistoryCitationTest` | 引用挂到**紧随工具结果之后的那条最终回答**上；护栏注入的 `HumanMessage` 不清空待定引用（它出现在工具结果和最终回答之间，当成新一轮就会把这一轮的引用顺手清掉）；一轮两次检索的引用被合并；**新的真实用户消息会清掉上一轮没被消费的引用**（模型没给出最终回答时不能顺延到下一轮）；没有 artifact 的旧会话不产生 `sources` 键；artifact 里 `sources` 为空时跳过 |
+| `RerankStageTest`（新增 1 个） | 重排后返回的是**带分数的副本**，正文与来源不变；重排失败/关闭时返回原对象、**不带分数**；混合模式下连续两次检索，**缓存语料的 metadata 始终不含 `rerank_score`**——原地写会把「上一个 query 的相关度」留给下一个 query，而这个 bug 只在混合模式出现（向量模式的假检索器每次给新列表） |
+
+设计取舍：`load_history` 的用例用 `object.__new__(ReactAgent)` 绕过 `__init__`（真构造会打开 Chroma 并灌库），只注入一个实现 `get_state` 的 `FakeGraph`。`RagServiceCitationTest` 沿用 `test_rag_service.py` 的做法：构造真服务对象但把 `chain` 换成 `StubChain`、把 `retrieve_with_stats` 换成返回固定文档的 lambda；`tearDown` 里用 `__dict__.pop` 删除实例属性而不是赋回，否则实例属性会一直遮住类上的真方法、污染后面的用例。
+
 ## 4. 怎么运行
 
 ```bash
@@ -302,7 +319,7 @@ python eval/calibrate_min_score.py
 | 项 | 结果 |
 |---|---|
 | 数据集校验 | `VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`，0 个错误 |
-| 单元测试 | **211 个全部通过，约 2.4 秒**（M2 前 84 个；M2 后 126 个：新增切分 8、混合检索 20、重排 9、RAG 服务 5；身份上线后 160 个：新增 `test_auth.py` 17、`AuthApiTest` 10、报告归属 4、报告参数补齐 3；历史压缩上线后 211 个：新增 `test_history_compressor.py` 51） |
+| 单元测试 | **247 个全部通过，约 3 秒**（M2 前 84 个；M2 后 126 个：新增切分 8、混合检索 20、重排 9、RAG 服务 5；身份上线后 160 个：新增 `test_auth.py` 17、`AuthApiTest` 10、报告归属 4、报告参数补齐 3；历史压缩上线后 211 个：新增 `test_history_compressor.py` 51；引用溯源上线后 247 个：新增 `test_citations.py` 22、`CitationCaptureTest` 7、`RagServiceCitationTest` 3、`ChatRunnerCitationTest` 3、重排副本回归 1） |
 | 向量库 | **145 个向量**、145 个唯一 ID、145 段唯一内容、5 个来源/md5 组合、`hnsw:space=cosine`、`split_sig=95ec9f1c38e8`（M2 前：66 个向量、默认 L2） |
 | 索引幂等 | 同一语料第二次 `load_document()` 全部跳过，不重新 embedding、不产生重复 ID |
 | easy 回答级评测 | 80 题全部执行，生成与判分错误 0（M2 后复跑见 5.13） |
@@ -729,13 +746,51 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 - **摘要模型单点**：只实测了 qwen-flash。qwen-turbo 在本账号下拿不到（HTTPError/429），qwen-max/qwen-plus 太慢（同一段稿 5.0s / 3.3–6.6s），换模型需要复跑 `log/probe_cap.py`。
 - **`enabled: false` 的回归没有自动化**：关闭压缩走的是原路径，单测覆盖了 `disabled` 分支，但没有跑一遍完整评测集对比「开/关压缩」的回答质量差异（需要 easy 全量复跑，成本原因暂缓，见第 8 节）。
 
+### 5.16 回答引用溯源（2026-11-13）
+
+**测什么**：一条回答下面的「引用来源」面板，必须做到四件事——① **该有引用时一定有**（这一轮真的检索过），② **不该有引用时绝不能有**（越界拒答、报告路由、无证据兜底、模型自己答的），③ 引用条目里的文件/小节/相关度和检索那一刻的结果一致，且**不泄漏本地绝对路径**，④ 刷新页面或切换会话之后引用还在（不能只是流式过程中闪一下）。另外要确认引用走的是 `ToolMessage.artifact` 通道，**一个 token 都没多花**。
+
+**怎么测**：四层，前三层可复跑。
+
+1. **离线单测 36 个**（`tests/test_citations.py` 22、`CitationCaptureTest` 7、`RagServiceCitationTest` 3、`ChatRunnerCitationTest` 3、重排副本回归 1）：纯函数 `build_sources` / `merge_sources` / `summarize_retrieval_stats` 的边界（路径归一化、预览折叠空白与截断、去重保留更高分、多次调用聚合、空列表）、中间件从 artifact 收集引用（含护栏拦截/工具报错时不收集）、`answer_with_citations` 三条分支（正常/越界/无证据）、`chat_runner` 落 `rag:retrieve` span、以及 `load_history` 从 checkpoint 还原引用。全部不调 DashScope，不碰网络。
+2. **序列化往返（离线）**：`log/check_artifact_serde.py` 用 LangGraph 真实的 `JsonPlusSerializer` 把一个带 artifact 的 `ToolMessage` dump 再 load，验证 `ARTIFACT_EQUAL=True`、`SCORE_TYPE=float`、`CONTENT_ONLY_HAS_ARTIFACT=False`（artifact 的内容没有混进 `content`）。**这一步必须在写功能之前做**——整个方案建立在「artifact 会被存进 checkpoint」这个假设上，假设不成立就得换设计。
+3. **端到端实跑**（`log/verify_citations.py`，真模型真 Chroma 真 HTTP）：5 发覆盖全部路由（错误码 QA、拖布 QA、越界、超纲、报告），逐轮校验 `bool(sources) == bool(有 rag:retrieve span)` 这条**核心不变式**，再做结构校验（必填键齐全、`file` 里不含 `\` 或 `/`、`score` 落在 0~1、编号从 1 连续）、拒答/报告路由不许自称有依据、span 的 `detail["sources"]` 与面板条数一致；最后拉 `/history/{thread}` 验证往返——带引用的条数应当等于检索过的轮数，且引用只挂在 assistant 消息上。报告写 UTF-8 文件 `log/verify_citations_report.md`，**控制台只输出 ASCII**，跑完自动删掉自己的 thread。
+4. **浏览器结构验证**（手工驱动 DOM）：真发一轮问答，读 `.notice-target` 下 `details.sources` 的结构、summary 文案、每条的文件/小节/分数；刷新页面看面板是否复原；再打开一条 **#28 之前的旧会话**看降级表现；`list_console_messages` 查有无报错。
+
+**结果**：
+
+| 项 | 观测 |
+|---|---|
+| 单元测试 | 247 个全通过（引用溯源占 36 个），约 3 秒 |
+| 端到端 | `EXIT=0`、`PROBLEMS 0`；5 轮路由 `['qa','qa','out_of_scope','qa','report']`，引用条数 `[3, 3, 0, 0, 0]` |
+| 错误码轮 | 首条 `故障排除.txt / 错误代码 / E05 悬崖或轮组异常`，相关度 **0.891**；次两条 E04 0.1772、E03 0.1743——阈值 0.16 之上但分数差一个量级，说明重排真的把 E05 排出来了 |
+| 拖布轮 | 首条 `扫拖一体机器人100问.txt / 拖地与水箱 / Q4` 0.383，第三条 Q12 0.2716；回答里的「装洗衣袋、避免高温烘干」正是 Q12 的原文，**溯源对得上** |
+| 检索 span | `duration_ms=252.93`（=召回 149.09 + BM25 0.09 + 重排 103.75）、`calls=1, mode=hybrid, index_size=145, vector_candidates=20, bm25_candidates=14, fused_candidates=24, overlap=10, rerank_kept=6, rerank=ok, rerank_top_score=0.891, sources=3`（`rerank_kept=6` 但只展示 3 条，因为 k=3） |
+| 历史往返 | `HISTORY_WITH_SOURCES 2` / 检索过的轮数 `2`，一致；引用只出现在 assistant 消息上，user 消息 0 条 |
+| token | 引用全程走 artifact，`content` 里没有引用文本；`done` 事件的 `usage` 与上线前同题型一致（未新增开销） |
+| 浏览器 | summary 为 `▶引用来源3`，展开后 3 条，每条渲染出 `维护保养.txt / 耗材更换周期（参考）· 1-7 / 相关度 0.334` 三段；刷新后面板数量 1、内容一致 |
+| 旧会话降级 | 打开 #28 之前的会话（22 行、11 条 assistant 回答），渲染 **0 个**引用面板——不报错、不出空壳 |
+| 清理 | 实跑脚本自删 thread，返回 `{'checkpoints': 25, 'writes': 29, 'traces': 5, 'spans': 13}`；浏览器那条另删，返回 `{'checkpoints': 9, 'writes': 11, 'traces': 1, 'spans': 4}` |
+
+**为什么这么测**：引用面板最坏的失效方式不是「不显示」，而是**显示了假的**——给一条越界拒答挂上「参考资料」，等于在暗示它有依据，比不挂更糟。所以验证的主角是那条不变式（`bool(sources) == bool(retrieval_span)`），而不是「能不能看到面板」。第一版脚本里我写死了一条 `no_evidence:sources_empty` 的断言，实跑才发现「超纲问题」这一轮模型压根没调 `rag_summarize`（`tool_calls=0`、无检索 span），0 引用本来就是对的结果，是断言的前提错了——**零引用有四种合法成因，逐轮对着 span 判才站得住**。序列化往返之所以单列一层，是因为它是整个方案的地基；地基塌了，后面所有代码都要重写。
+
+**用途**：面试追问「RAG 怎么保证不胡说」时，可以给出「每轮都落一条 `rag:retrieve` span，带 mode / 候选数 / 重叠数 / 重排保留数 / top score，界面上引用条目和 span 数量对得上；引用走 artifact 通道零 token 开销，且随 checkpoint 持久化，刷新和切会话都不丢」这组可验证的事实，而不是只说「加了引用」。
+
+**未测 / 待补**：
+
+- **视觉层面没有像素级检查**：宿主视口是 0×0（`window.innerWidth === 0`），`click` 与 `take_screenshot` 直接报 `NATIVE_BROWSER_VIEWPORT_UNAVAILABLE`，CSS 过渡也永远不走帧——展开箭头的 `transform` 读出来是单位矩阵，一度被我误判成「样式没生效」，最后靠内联 `transition:none` 强制取值才确认 `rotate(90deg)` 是对的（见 `docs/pitfalls.md` P22）。**面板的观感、间距、窄屏/移动端布局都属于未验证项。**
+- **句级引用映射没有做**：现在只能回答「这条回答用了这 3 段」，不能回答「这句话出自第几段」。要做就得改生成提示词让模型输出角标，那会动到 M2 的回答级基线，属于另一次评测投入。
+- **`MAX_SOURCES=12` 的截断只在单测里覆盖**：实跑最多一轮 3 条（k=3），截断分支没有被真实流量打到。
+- **artifact 给 checkpoint 增了体积**：一轮一条引用约 0.5~1 KB，长会话下 checkpoint 会持续变大。只做了定性观测，没有量化百轮会话的膨胀曲线，也没有做 artifact 的淘汰策略。
+- **重排降级时的分数缺失**：`rerank=fallback` 或 `disabled` 时后端给 `score=null`，界面按「不显示分数」处理（单测覆盖），但没有真的把重排关掉跑一遍端到端确认。
+
 ## 6. 这些测试有什么用
 
 1. **改动前先知道现状。** M2 之前能说“easy Top-1 65.45%、Top-3 94.55%，hard Top-1 55.00%、Top-8 90.00%”，而不是“感觉挺准”；正是这几个数字指出了「文件能找到、片段找不到」。
 2. **改动后能证明是否变好，也能证明哪一步没用。** M2 的切分、混合召回、重排各跑一次同一套 easy + hard 题，才敢说「切分单独上会让 Span@3 掉 7 个百分点、重排才是主要杠杆」（5.13）；只看最终分是得不出这个结论的。
 3. **失败能定位到层。** hard 的 Source@3 是 100% 但 Span@8 只有 90%，问题在片段级；`qa-042` 因此能用一次切分改动修好；报告字段完整但忠实度不足，问题在生成而不是取数；pass^k 波动题则说明单次通过不可靠。
 4. **面试有证据。** 题量、标注口径、指标定义、复现命令、失败案例都能当场打开；hard split 与 pass^k 能回答“是不是只会背原句、是不是碰巧通过”；分阶段结果文件能回答“这个提升到底是哪一步带来的”。
-5. **防止回归。** 改配置或换模型后，先跑两套 `--validate-only` 和 160 个单测，再跑检索与回答级基线；换语料或换重排模型还要重跑 `calibrate_min_score.py`，避免“修一个坏三个”。
+5. **防止回归。** 改配置或换模型后，先跑两套 `--validate-only` 和 247 个单测，再跑检索与回答级基线；换语料或换重排模型还要重跑 `calibrate_min_score.py`，避免“修一个坏三个”。
 
 ## 7. 设计取舍与边界
 
@@ -764,6 +819,6 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 3. **easy 全量 pass^k**：easy 80 题仍只跑单次，成本约为单次 3 倍，适合按周或发版前跑。
 4. **扩大 hard split**：25 题能暴露问题，但样本仍小；下一步加入更多跨章节组合、近似干扰项和错别字问法，并把越界路由准确率纳入同一套基线。
 5. **越界边界补强**：`neg-004` / `neg-009` 已由确定性拒答覆盖（见 5.10），`hard-neg-001/002/003/004/005` 已由无证据兜底覆盖（见 5.13）；剩下的是「知识库里有相邻内容、但答案其实不存在」这类灰区，仍靠模型判断。
-6. **重排可观测性**：给 `rerank=fallback` 加计数与告警，重排分低于阈值时把 `top_score` 写进 trace span，便于事后判断是「真没证据」还是「重排挂了」。
-7. **服务化收尾**：~~给 `/chat/stream` 加登录态与 `thread_id` 归属校验~~（已完成，见 5.14）；剩下按用户限流、会话历史压缩、回答引用溯源、trace 换 Postgres 或接 OpenTelemetry、观测数据按账号隔离、补浏览器端自动化测试（当前浏览器验证靠手工驱动 DOM，截图能力受限于宿主视口）。
-8. 把两套 `--validate-only` + 160 个单测 + `calibrate_min_score.py` 接进 CI，检索与回答级基线作为人工回归。
+6. **重排可观测性**：~~重排分低于阈值时把 `top_score` 写进 trace span~~（已完成，`rag:retrieve` span 现在带 `rerank_top_score` 与 `rerank` 状态，见 5.16）；剩下的是给 `rerank=fallback` 加计数与告警，便于事后判断是「真没证据」还是「重排挂了」。
+7. **服务化收尾**：~~给 `/chat/stream` 加登录态与 `thread_id` 归属校验~~（已完成，见 5.14）；~~会话历史压缩~~（已完成，见 5.15）；~~回答引用溯源~~（已完成，见 5.16）；剩下按用户限流、CI、trace 换 Postgres 或接 OpenTelemetry、观测数据按账号隔离、补浏览器端自动化测试（当前浏览器验证靠手工驱动 DOM，截图能力受限于宿主视口）。
+8. 把两套 `--validate-only` + 247 个单测 + `calibrate_min_score.py` 接进 CI，检索与回答级基线作为人工回归。

@@ -1,4 +1,5 @@
 from agent.scope_router import OUT_OF_SCOPE_ANSWER, is_out_of_scope_query
+from rag.citations import build_sources
 from rag.hybrid_retriever import HybridRetriever
 from rag.reranker import DashScopeReranker
 from rag.vector_store import VectorStoreService
@@ -92,12 +93,24 @@ class RagSummarizeService(object):
             }
         )
 
-    def rag_summarize(self, query: str) -> str:
-        """检索 + 生成的一条龙入口，供 Agent 工具继续使用。"""
-        return self.answer(query, self.retrieve(query))
+    def answer_with_citations(self, query: str) -> tuple[str, list[dict], dict]:
+        """检索 + 生成，并把引用条目与检索统计一起带回来。
+
+        返回 ``(回答, 引用列表, 检索统计)``。越界拒答不带引用：那条回答一个字
+        都没有用到检索结果，界面上再列「参考资料」就是在暗示它有依据。
+        无证据兜底同理，此时文档本来就是空的。
+        """
+        documents, stats = self.retrieve_with_stats(query)
+        answer = self.answer(query, documents)
+        if answer == OUT_OF_SCOPE_ANSWER:
+            return answer, [], stats
+        return answer, build_sources(documents), stats
 
 
 if __name__ == '__main__':
     rag = RagSummarizeService()
     rag.ensure_knowledge_base()
-    print(rag.rag_summarize('小户型适合哪些扫地机器人'))
+    text, sources, retrieval = rag.answer_with_citations('小户型适合哪些扫地机器人')
+    print(text)
+    print(f"引用 {len(sources)} 条：{sources}")
+    print(f"检索统计：{retrieval}")

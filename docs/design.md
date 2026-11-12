@@ -45,12 +45,12 @@ flowchart LR
 - **服务层**：`server/app.py` 只负责 HTTP；`ChatRunner` 把 Agent 事件包装成带 trace、token、成本与 `done` 统计的 SSE 流；前端是单文件 HTML，用 `fetch` + `ReadableStream` 解析。
 - **身份层**：`server/auth.py` 管账号、令牌与会话归属，以 FastAPI 依赖 `current_user` 的形式挂在业务接口上；`thread_owner` 首次写入即认领，`/sessions` 用 `owner_filter` 在截断 limit 之前先过滤，报告链路用登录绑定的业务用户 ID 拦越权。
 - **Agent 内核**：LangChain 1.x `create_agent` + 五个中间件（工具监控/护栏、日志、强制收口、报告提示词兜底切换、历史压缩）。中间件顺序是有意义的：`compress_history` 必须排在 `report_prompt_switch` 之后，因为后者是 `dynamic_prompt`、会整体替换 `system_message`。
-- **RAG**：Chroma（cosine）持久化 + md5/切分签名增量同步；空库自愈；按 QA 结构切分（前言 / Q-A 对 / 【块】 / 编号条目），145 chunks，chunk 带 `section`/`unit`/`mode` 元数据；检索是「向量 + BM25 双路召回 → RRF 融合 → gte-rerank-v2 重排 → min_score 无证据兜底」。
+- **RAG**：Chroma（cosine）持久化 + md5/切分签名增量同步；空库自愈；按 QA 结构切分（前言 / Q-A 对 / 【块】 / 编号条目），145 chunks，chunk 带 `section`/`unit`/`mode` 元数据；检索是「向量 + BM25 双路召回 → RRF 融合 → gte-rerank-v2 重排 → min_score 无证据兜底」。重排通过的片段会带上 `rerank_score`，由 `rag/citations.py` 压成引用条目随回答返回（走 `ToolMessage.artifact`，不进模型上下文）。
 - **会话**：`SqliteSaver` + `thread_id`，刷新或重启后可恢复；超过 16 条消息后由 `HistoryCompressor` 把较早轮次折成要点清单并进 system 消息，checkpoint 原文与界面历史保持完整。报告/拒答子流程用 `update_state` 写回同一 thread。
 - **报告线**：`is_report_query` 判断意图后走确定性 `report_pipeline`——解析/补齐 `user_id`、`month`，直接 `fetch_external_data`，把 CSV 记录注入报告提示词，调用一次 `temperature=0` 模型写作；模型不参与工具选择。路由未命中的报告请求才回退 ReAct，`fetch_external_data` 成功仍会兜底切换报告提示词。`fill_context_for_report` 已删除。
 - **越界线**：`scope_router` 先判报告、再判越界、最后问答；越界请求直接返回固定话术，不调用模型。
 - **护栏**：单轮最多 6 次工具调用；相同成功调用只执行一次；失败允许换参数重试一次；参数不合规直接返回 `ToolMessage(status="error")`；连续拦截 2 次注入一次收口提示。
-- **可观测**：每次请求一条 trace，路由/工具各一条 span；token 从供应商用量读取，缺数据不估算成本。
+- **可观测**：每次请求一条 trace，路由/工具各一条 span，检索过的一轮再多一条 `rag:retrieve` span（候选数、融合数、重叠数、重排结果与三段延迟）；token 从供应商用量读取，缺数据不估算成本。
 
 ## 3. 检索管线（M2 已实施）
 
@@ -100,6 +100,8 @@ flowchart LR
 | 15 | **报告的越权校验放在取数之前**，用登录绑定的业务用户 ID | 只在提示词里要求模型别查别人；取数后再判断 | 隐私边界不能靠模型自觉；判断放在最前面才能做到「零取数、零 token」 | 需要在报告链路里多传一个 `owner_user_id` 参数 | **已实施**：`check_report_owner` 返回拒答文本时直接短路，`tool_calls=[]`、`no_model_call=True`，账本记 `usage_source="none"` 而不是 `"missing"`。参数解析顺序同时改成「显式入参 > 问题里抽的 > 登录绑定 ID > mock 工具」——登录绑定排在 mock 之前是必需的，否则「我的报告」会被 mock 抽到的随机用户号撞上归属校验，变成拒绝自己的查询（实跑发现的 bug，见 `docs/pitfalls.md` P17） |
 
 | 16 | **历史压缩只改本次请求的视图**（`wrap_model_call` + `ModelRequest.override`），摘要并进 system 消息 | 官方 `SummarizationMiddleware`（`before_model` + `RemoveMessage`）；截断只留最近 N 条；摘要塞成一条 `HumanMessage` | `RemoveMessage` 会真的改写 state，早期对话就从界面和 checkpoint 里消失了，用户翻不回去；截断是硬丢事实；塞 `HumanMessage` 会让模型把摘要的排版当成回答模板 | 每轮多一次摘要调用（卡在首字延迟前面）；摘要本身可能编造，需要额外校验 | **已实施**：`agent/history_compressor.py`。触发 16 条 / 保留 8 条，边界不越过最后一条真实用户消息（当前轮不折）、不拆工具组；摘要按 thread 指纹缓存，折叠区变长时**从原文重写**而不是「旧摘要 + 新增」增量合并；出来后过一道 `find_unsourced_identifiers` 编造校验，摘要里出现对话稿中没有的型号/错误码/ID/日期就整轮放弃压缩。实测 36 条消息时 payload 3072 → 1700 input tokens（**-44.7%**），扣掉摘要自身开销后每轮净省 ¥0.0027；11 轮后界面历史 22 条完整、摘要零泄漏 |
+
+| 17 | **引用条目走 `ToolMessage.artifact`**（`content_and_artifact`），不改生成提示词 | 让模型在回答里输出 `[1][2]` 内联标记；把引用拼进工具返回的 content；每轮结束后按 query 重检索一次反推出处 | artifact 不进模型上下文，多带的引用信息零 token；模型自己写标记会漏、会错位、会在无证据时硬编一个编号，而这正是本项目一直在防的事；拼进 content 等于让模型多读一遍元数据、还要为它付钱；事后重检索得到的出处未必是当时真正用到的那几条 | 界面上没有「回答里第几句话对应第几条引用」的行级映射，只能看到这一轮检索到了哪些片段；artifact 会随 checkpoint 落库，每轮多约 0.5–1 KB | **已实施**：`rag/citations.py` 构造条目（文件 / 小节 / 片段 / 重排相关度 / 60 字预览），`monitor_tool` 从 artifact 收进 `context`，`iter_chat` 的 result 事件带出，`ChatRunner` 落一条 `rag:retrieve` span 并把 `sources` 放进 `done`；`load_history` 按「工具结果 → 紧随其后的最终回答」配对，所以刷新和切会话后引用还在。核心不变式是**有引用 ⟺ 真的检索过**：越界拒答、报告、无证据兜底、模型没调检索工具直接作答，四类一律 0 条（5 轮实跑验证，见 `docs/testing.md` §5.16）。重排分数只写在 Document 副本上，不写回 BM25 缓存语料，否则下一个 query 会读到上一个 query 的相关度 |
 
 ## 5. 明确不做
 

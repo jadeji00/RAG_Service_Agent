@@ -223,3 +223,31 @@
 - **防复发**：`log/probe_cap.py` 留在仓库里（跑真实 dump 出来的对话稿，输出 ASCII 摘要指标 + UTF-8 全文），换摘要模型或改指令后直接复跑对比；`config/agent.yml` 在 `max_summary_chars` 上写明「这个值只是请求，qwen-flash 会超」以及真正起作用的是指令粒度。
 - **状态**：已修复并实测（11 轮端到端 `recall_turn1_error_code ok=True`、`answer_contamination=none`；36 条消息时 payload 3072 → 1700 input tokens，-44.7%）。
 - **同类陷阱**：**提示词里的长度上限对弱模型基本没有约束力，要限长度就得限「条数 × 每条粒度」。** 另外，任何放在首字延迟之前的额外模型调用，它的耗时是直接加在用户感知延迟上的，选模型和写指令时都要按「用户要白等多久」来算，不能只看它省了多少 token。
+
+## P22. 往重排结果的 metadata 里写分数，实际是写进了 BM25 的缓存语料
+
+- **现象**：给引用条目补「相关度」时，最省事的做法是在 `_rerank` 里 `pool[index].metadata["rerank_score"] = score`。代码看着没问题，跑起来也能出分数。
+- **根因**：`pool` 里的 Document **不是副本**。BM25 那一路返回的是 `self._documents[hit.index]`——检索器在 `build()` 时存下的那个列表里的同一个对象。往它的 metadata 里写字段，等于**改写了常驻缓存**。于是第一个 query 的分数会留在语料上：后面某个 query 命中同一段但重排没保留它（或走了 `fallback` 分支），`build_sources` 就会读到**上一个问题的相关度**，界面上显示出一个看似合理、其实属于别人的分数。这个 bug 不报错、不复现于单 query 测试，只在「同一进程连续问多个问题」时悄悄发生。
+- **修复**：`_rerank` 改成构造新 `Document`（`page_content` 照抄、`metadata` 用 `{**原metadata, "rerank_score": round(score, 4)}`）。**降级/关闭重排的分支仍然返回原对象、不带分数**——宁可没有分数，也不要写个假的 0 上去，界面按「不显示分数」处理。
+- **防复发**：`tests/test_hybrid_retrieval.py::RerankStageTest::test_rerank_does_not_write_scores_into_cached_corpus` 用两个不同的 StubReranker 连跑两次 hybrid 检索，断言 `CORPUS` 里的 metadata 始终不含 `rerank_score`。这条用例**只在 hybrid 模式下才会失败**（纯向量那一路本来就是新建对象），所以它同时也在守着「别把测试模式改成 vector 图省事」。
+- **状态**：已修复（审查时发现，不是线上故障）；顺带把两条原本比较整个 `Document` 相等性的旧断言改成分别比 `page_content` / `metadata["source"]` / `metadata["rerank_score"]`，因为「带分数」现在是明确契约。
+- **同类陷阱**：**任何从缓存/索引里取出来的对象都要当成只读的。** Python 里 `list[i]` 给的是引用，`metadata` 是共享的 dict；想在上面加字段，先复制。尤其当这个缓存的生命周期是整个进程时，污染是跨请求的。
+
+## P23. 验证脚本不删自己开的会话，在用户侧栏里堆出 8 个一模一样的假会话
+
+- **现象**：#27 历史压缩验收通过后，用户的会话侧栏里多了 **8 个标题都是「E05 错误码是什么意思」的会话**，看起来和真实会话毫无区别，点进去是 11 轮问答。
+- **根因**：`log/verify_history.py` 每跑一次就 `uuid4().hex` 新开一个 thread，跑完只打印报告，**没有调 `DELETE /sessions/{thread}`**。会话标题取第一个问题，而脚本的第一个问题永远是同一句，所以 8 次跑动留下 8 个同名会话。写脚本时只顾着「验证通过」，没想过它是在**用户的生产库**上跑——`checkpoints.sqlite3` 和 `obs.sqlite3` 都是同一个文件。
+- **修复**：脚本改成 `try: return run(...) finally: cleanup(token, thread)`，cleanup 走真实 HTTP 删除并打印删掉了多少条 checkpoint/write/trace/span。#28 的 `log/verify_citations.py` 从第一版就带自删，实跑后打印 `{'checkpoints': 25, 'writes': 29, 'traces': 5, 'spans': 13}`。
+- **防复发**：所有端到端验证脚本都必须自删；已经堆下的 8 个**没有直接删**——无法可靠区分哪些是脚本造的、哪些是用户自己建的，删除不可逆，改成向用户点名确认后再处理。
+- **状态**：脚本已修；遗留的 8 个待用户确认。
+- **同类陷阱**：**在真实环境上跑的验证脚本，要把它当成一个会写数据的用户来设计，收尾清理和断言一样重要。** 尤其是「标题/名字取自固定输入」的场合，重复跑动留下的痕迹会伪装成正常数据，事后很难分辨。
+
+## P24. 宿主浏览器视口是 0×0，CSS 过渡永远不走帧，`getComputedStyle` 读到单位矩阵
+
+- **现象**：给引用面板加了「展开时箭头转 90°」（`.sources[open] .caret { transform: rotate(90deg) }`，带 `.15s` 过渡）。用 `evaluate_script` 把 `details.open = true`，等 400ms 再读 `getComputedStyle(caret).transform`，返回的是 `matrix(1, 0, 0, 1, 0, 0)`——**单位矩阵，也就是没转**。差点据此判定「CSS 没生效」而去改样式。
+- **根因**：in-app 浏览器的 `window.innerWidth === 0`，宿主不提供可见视口（`click` 与 `take_screenshot` 直接报 `NATIVE_BROWSER_VIEWPORT_UNAVAILABLE`）。视口为 0 时渲染管线不做真正的帧合成，**过渡永远停在起始值**，所以计算样式读到的是未过渡的状态。同理，一切布局度量都是退化的：一个 75 字的 `.bubble` 量出来是 `0 × 1903`。
+- **修复**：不改样式，改验证手段——给探针元素内联 `caret.style.transition = 'none'` 强制跳过过渡，再读 `transform`，得到 `matrix(0, 1, -1, 0, 0, 0)`，正是 `rotate(90deg)`。**能读到目标值就说明 CSS 是对的**，读不到只是过渡没跑。
+- **防复发**：在这个宿主里验前端只认三样东西——DOM 结构、`textContent`、以及**关掉过渡后的**计算样式；不认任何像素、尺寸、动画中间态。`docs/testing.md` 5.16 的「未测/待补」里明确写了面板观感与窄屏布局属于未验证项。
+- **状态**：已定位并绕过；像素级视觉验证仍缺，需要在真实浏览器里补。
+- **同类陷阱**：**「读到的样式值不对」有两种可能：样式错了，或者测量环境不支持这次测量。** 先排除后者——把动画/过渡/异步布局关掉再读一次，比反复改 CSS 快得多。
+

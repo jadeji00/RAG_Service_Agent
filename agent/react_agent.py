@@ -41,6 +41,7 @@ from agent.tools.middleware import (
     report_prompt_switch,
 )
 from observability.usage import TokenAccount, extract_usage
+from rag.citations import merge_sources, summarize_retrieval_stats
 from utils.config_handler import agent_conf, rag_conf
 from utils.logger_handler import logger
 from utils.path_tool import get_abs_path
@@ -168,7 +169,9 @@ class ReactAgent:
         - delta:    {"text": "..."}
         - tool:     {"name", "status", "args", "ok", "id", ...}
         - notice:   {"level", "text"} 报告失败降级提示
-        - result:   {"route", "answer", ...}
+        - result:   {"route", "answer", "history", "sources", "retrieval"}
+          ``sources`` 是这一轮引用到的资料条目（文件/小节/片段/相关度），
+          ``retrieval`` 是合并后的检索统计；报告与越界两条路都不带引用。
         """
         account = token_account if token_account is not None else TokenAccount()
         route = route_intent(query)
@@ -235,6 +238,8 @@ class ReactAgent:
             "history_compressor": self.history_compressor,
             "usage_sink": account.add,
             "history_stats": [],
+            "sources_raw": [],
+            "retrieval_stats": [],
         }
 
         answer_parts: list[str] = []
@@ -306,6 +311,8 @@ class ReactAgent:
             "route": "qa",
             "answer": answer,
             "history": summarize_history_stats(context["history_stats"]),
+            "sources": merge_sources(context["sources_raw"]),
+            "retrieval": summarize_retrieval_stats(context["retrieval_stats"]),
         }
 
     def execute_stream(self, query: str, thread_id: str = "default"):
@@ -314,8 +321,13 @@ class ReactAgent:
             if event.get("type") == "delta":
                 yield event.get("text", "")
 
-    def load_history(self, thread_id: str) -> list[dict[str, str]]:
-        """从 checkpointer 还原某个会话的 user/assistant 消息，供界面恢复气泡。"""
+    def load_history(self, thread_id: str) -> list[dict]:
+        """从 checkpointer 还原某个会话的 user/assistant 消息，供界面恢复气泡。
+
+        assistant 条目在能还原引用时会多带一个 ``sources`` 字段：引用条目存在
+        ToolMessage.artifact 里（不进模型上下文，但会落 checkpoint），按「本轮工具
+        结果 → 紧随其后的最终回答」配对，重新打开旧会话也能看到当时的资料出处。
+        """
         try:
             snapshot = self.agent.get_state(
                 {"configurable": {"thread_id": thread_id}}
@@ -325,13 +337,21 @@ class ReactAgent:
             return []
 
         messages = (snapshot.values or {}).get("messages", [])
-        history: list[dict[str, str]] = []
+        history: list[dict] = []
+        pending_sources: list[list[dict]] = []
         for message in messages:
+            if isinstance(message, ToolMessage):
+                artifact = getattr(message, "artifact", None)
+                if isinstance(artifact, dict) and artifact.get("sources"):
+                    pending_sources.append(artifact["sources"])
+                continue
             if isinstance(message, HumanMessage):
                 # 护栏注入的提示不是用户真实输入，不回显。
                 if (message.additional_kwargs or {}).get("guardrail"):
                     continue
                 role = "user"
+                # 新的一轮开始了，上一轮没被回答消费掉的引用不能顺延过来。
+                pending_sources = []
             elif isinstance(message, AIMessage):
                 # 带 tool_calls 的 AI 消息是中间步骤，不放进界面历史。
                 if getattr(message, "tool_calls", None):
@@ -343,7 +363,11 @@ class ReactAgent:
             content = message.content
             if not isinstance(content, str) or not content.strip():
                 continue
-            history.append({"role": role, "content": content.strip()})
+            entry: dict = {"role": role, "content": content.strip()}
+            if role == "assistant" and pending_sources:
+                entry["sources"] = merge_sources(pending_sources)
+                pending_sources = []
+            history.append(entry)
 
         return history
 

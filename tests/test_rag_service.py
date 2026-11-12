@@ -55,6 +55,65 @@ class RagServiceAnswerTest(unittest.TestCase):
         self.assertTrue(refusal_cue(NO_EVIDENCE_ANSWER))
 
 
+class RagServiceCitationTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.service = RagSummarizeService()
+
+    def setUp(self):
+        self.stub = StubChain()
+        self.service.chain = self.stub
+
+    def tearDown(self):
+        # 实例属性会遮住类上的真方法，必须删掉而不是赋回，否则污染后面的用例。
+        self.service.__dict__.pop("chain", None)
+        self.service.__dict__.pop("retrieve_with_stats", None)
+
+    def stub_retrieval(self, documents, stats):
+        self.service.retrieve_with_stats = lambda query, k=None: (documents, stats)
+
+    def test_returns_answer_sources_and_stats(self):
+        docs = [
+            Document(
+                page_content="E05 悬崖或轮组异常，擦净底部传感器后重启。",
+                metadata={"source": r"D:\AI_RAG_Agent\data\故障排除.txt",
+                          "section": "报错处理", "unit": "E05", "rerank_score": 0.8734},
+            )
+        ]
+        stats = {"mode": "hybrid", "fused_candidates": 12, "rerank": "ok"}
+        self.stub_retrieval(docs, stats)
+
+        answer, sources, returned = self.service.answer_with_citations("E05 怎么办")
+
+        self.assertEqual(answer, "STUB_ANSWER")
+        self.assertEqual(returned, stats)
+        self.assertEqual(len(sources), 1)
+        # 绝对路径只留文件名，分数原样带出去给界面显示。
+        self.assertEqual(sources[0]["file"], "故障排除.txt")
+        self.assertEqual(sources[0]["section"], "报错处理")
+        self.assertEqual(sources[0]["score"], 0.8734)
+        self.assertEqual(len(self.stub.calls), 1)
+
+    def test_out_of_scope_returns_no_sources(self):
+        # 越界拒答一个字都没用到检索结果，列出「参考资料」等于暗示它有依据。
+        docs = [Document(page_content="无关资料", metadata={"source": "选购指南.txt"})]
+        self.stub_retrieval(docs, {"mode": "hybrid"})
+
+        answer, sources, _ = self.service.answer_with_citations("帮我写一段 Python 爬虫代码")
+
+        self.assertEqual(answer, OUT_OF_SCOPE_ANSWER)
+        self.assertEqual(sources, [])
+        self.assertEqual(self.stub.calls, [])
+
+    def test_no_evidence_returns_no_sources(self):
+        self.stub_retrieval([], {"mode": "hybrid", "rerank": "ok", "rerank_kept": 0})
+
+        answer, sources, _ = self.service.answer_with_citations("扫地机器人能除甲醛吗")
+
+        self.assertEqual(answer, NO_EVIDENCE_ANSWER)
+        self.assertEqual(sources, [])
+
+
 class RetrievalConfigWiringTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -38,6 +38,23 @@ def _guard_state(runtime: Runtime) -> dict | None:
     return guard
 
 
+def _capture_citations(result, context: dict | None) -> None:
+    """把工具带回的引用条目和检索统计收进本轮 context。
+
+    只有 ``content_and_artifact`` 的工具才有 artifact，其余工具直接返回
+    ToolMessage，取不到就跳过。artifact 不进模型上下文，所以读它是零成本的。
+    """
+    if context is None:
+        return
+    artifact = getattr(result, "artifact", None)
+    if not isinstance(artifact, dict):
+        return
+    if artifact.get("sources"):
+        context.setdefault("sources_raw", []).append(artifact["sources"])
+    if artifact.get("retrieval"):
+        context.setdefault("retrieval_stats", []).append(artifact["retrieval"])
+
+
 @wrap_tool_call
 def monitor_tool(
     # 请求的数据封装
@@ -72,6 +89,7 @@ def monitor_tool(
         context = getattr(request.runtime, "context", None)
         if should_switch_report(tool_name) and context is not None:
             context["report"] = True
+        _capture_citations(result, context)
         return result
     except Exception as e:
         logger.error(
