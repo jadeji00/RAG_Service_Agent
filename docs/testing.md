@@ -911,7 +911,7 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl --repeat 3 \
 | 墙钟 | run 级 `created_at → updated_at`（含排队）四次为 **61 / 59 / 65 / 51 秒**；首次另用 jobs API 逐步核对过，作业本身 58 秒（08:53:21Z → 08:54:19Z）。口径不同别混着报，对外说"一分钟左右"。大头都在装依赖 |
 | runner | `ubuntu-latest`，单平台 |
 | 密钥 | 环境里只有 `sk-ci-placeholder-not-a-real-key`，整个作业零模型请求 |
-| 提交身份 | `main` 上全部 30 个 commit 的 author 只有一种：`jadeji00 <jadeji00@users.noreply.github.com>`（`git log --format='%an <%ae>' | sort -u` 实测单条；仓库级 `user.email` 覆盖，全局配置仍是别的邮箱），公开仓库不暴露真实邮箱 |
+| 提交身份 | `main` 上全部 30 个 commit 的 author 只有一种：`jadeji00 <jadeji00@users.noreply.github.com>`（把 `git log` 的 author 字段去重，结果只剩一条；仓库级 `user.email` 覆盖，全局配置仍是别的邮箱），公开仓库不暴露真实邮箱 |
 
 **用途**：README 上那个 CI 徽章从此是**实测过的绿**，不是「写好了还没跑」。面试里被问「你怎么保证别人 clone 下来能跑」，现在的回答有依据：干净环境 + 只读 `requirements.txt` + 263 个离线单测 + 两套数据集校验，一分钟左右出结果（四次 51–65 秒）；同时能说清边界——要调真模型的检索/回答基线和阈值标定不在 CI 里。
 
