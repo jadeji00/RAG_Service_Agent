@@ -18,7 +18,7 @@ data/
 
 - 文本文件为 UTF-8，按「标题 + 小节 + 问答」组织。
 - 当前切分参数：`chunk_size=200`、`chunk_overlap=20`，分隔符见 `config/chroma.yml`。
-- 当前 `allow_knowledge_file_type` 只含 `txt`：PDF 的内容已由两份 txt 覆盖，且授权状态不适合公开入库；确需索引 PDF 时再改配置。
+- 当前 `allow_knowledge_file_type` 只含 `txt`：PDF 的内容已由两份 txt 覆盖，且它的授权状态不适合公开入库；确需索引 PDF 时再改配置。
 - 灌库入口：`python -m rag.vector_store`。启动时也会自动同步：
   - 文件内容未变 → 跳过；
   - 内容变化 → 按 `source` 删除旧 chunk 后重写；
@@ -56,6 +56,7 @@ data/
 
 ## 5. 公开仓库注意事项
 
-- `data/*.pdf` 已在 `.gitignore` 中排除，排除授权状态不明的第三方 PDF。
-- 其余 txt 为学习整理资料；**公开前请自行确认版权/授权**。如不确定，公开仓库只保留少量自写示例数据，并在 README 说明如何替换。
+- `data/*.pdf` 已在 `.gitignore` 中排除，不提交授权状态不明的第三方资料。
+- 五份 txt 是自行整理的通用产品问答（不含任何具体品牌的说明书原文、商标或售后话术），可随仓库公开。换成自己的语料时直接替换文件即可，启动会按 md5 自动重灌，删掉的文件对应向量也会被清理。
+- 公开前仍建议自行过一遍语料来源；**如不确定，公开仓库只保留少量自写示例数据，并在 README 说明如何替换**。
 - `.env`、`log/`、`chroma_db/`、`checkpoints/` 均不入库。

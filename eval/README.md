@@ -359,6 +359,8 @@ python -m unittest discover -s tests
 - `eval/results/hard_pass3_post_m2.*`：**当前** hard pass^3（M2 后），见 3.5；
 - `eval/results/report_pass3.*`：easy 报告题 pass^3，验证确定性报告子流程稳定性。
 
+> **归档产物只读，不在旧文件上手改数字。** `eval/results/*.json` 存的是当轮真实运行的快照：报告题正文的标题沿用 `prompts/report_prompt.txt` 里的品牌字样，通过率 / 正确率 / 有据率 / 延迟都直接来自原始输出与判分。要换口径就重跑并另存一份 `--out`——`hard_pass3.*` 与 `hard_pass3_post_m2.*` 的前后对比正是靠「留档不可改」才站得住。
+
 ## 5. 新增题目
 
 1. 在 `eval/dataset.jsonl` 追加一行，`id` 不重复；
