@@ -896,7 +896,7 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl --repeat 3 \
 
 ### 5.19 公开仓库上线与 CI 首次真实运行（2026-11-13）
 
-补的是 5.17 末尾那条「workflow 从未在 GitHub Actions 上真正执行过」。仓库：`https://github.com/jadeji00/RAG_Service_Agent`（public，MIT；本次上线推上去 26 个 commit，`git ls-remote` 与本地 tip 一致）。
+补的是 5.17 末尾那条「workflow 从未在 GitHub Actions 上真正执行过」。仓库：`https://github.com/jadeji00/RAG_Service_Agent`（public，MIT；上线那次推上去 26 个 commit，本节最后更新时 `main` 共 30 个）。
 
 **测什么**：CI 的离线那一半在**不是这台开发机**的环境里能不能跑绿——干净 Linux、只按 `requirements.txt` 装依赖、只给占位 Key。本地预演只能证明「这四条命令在我这儿过得去」，证明不了依赖清单自足。
 
@@ -906,21 +906,23 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl --repeat 3 \
 
 | 项 | 观测 |
 |---|---|
-| 运行 | run `43396758193`，作业 `离线检查（单测 + 数据集校验）`，`status=completed`、`conclusion=success`；随后 `0b9cc08`（本文档 + `.gitattributes`）触发的 run `43398099701`、`a7ae34d`（推送归因更正）触发的 run `43402104372` 也都是 `completed / success`——**三次是不同 commit、不同触发**，绿不是偶发 |
+| 运行 | 作业名 `离线检查（单测 + 数据集校验）`。四次触发全部 `completed / success`，且是四个不同 commit：`43396758193`（`4c2fe49`，首次）、`43398099701`（`0b9cc08`）、`43402104372`（`a7ae34d`）、`43403586873`（`c3fe899`）。绿不是偶发，也不是同一次运行被反复看。**本表只记到 2026-11-13 09:43 为止**，之后每次推 `main` 仍会触发同一套离线检查，最新状态看仓库 Actions 页与徽章 |
 | 步骤 | checkout → setup-python(3.11) → 安装依赖 → 单元测试 → easy 80 题校验 → hard 25 题校验 → 全量语法编译，全部 `success` |
-| 作业墙钟 | 第一次作业 08:53:21Z → 08:54:19Z = **58 秒**（jobs API 逐步核对过）；第二、三次只取了 run 的 `created_at → updated_at` = **59 秒 / 65 秒**（含排队，未再逐步核对）。大头都在装依赖 |
+| 墙钟 | run 级 `created_at → updated_at`（含排队）四次为 **61 / 59 / 65 / 51 秒**；首次另用 jobs API 逐步核对过，作业本身 58 秒（08:53:21Z → 08:54:19Z）。口径不同别混着报，对外说"一分钟左右"。大头都在装依赖 |
 | runner | `ubuntu-latest`，单平台 |
 | 密钥 | 环境里只有 `sk-ci-placeholder-not-a-real-key`，整个作业零模型请求 |
-| 提交身份 | 26 个 commit 的 author 全是 `jadeji00 <jadeji00@users.noreply.github.com>`（仓库级 `user.email` 覆盖，全局配置仍是别的邮箱），公开仓库不暴露真实邮箱 |
+| 提交身份 | `main` 上全部 30 个 commit 的 author 只有一种：`jadeji00 <jadeji00@users.noreply.github.com>`（`git log --format='%an <%ae>' | sort -u` 实测单条；仓库级 `user.email` 覆盖，全局配置仍是别的邮箱），公开仓库不暴露真实邮箱 |
 
-**用途**：README 上那个 CI 徽章从此是**实测过的绿**，不是「写好了还没跑」。面试里被问「你怎么保证别人 clone 下来能跑」，现在的回答有依据：干净环境 + 只读 `requirements.txt` + 263 个离线单测 + 两套数据集校验，58–65 秒出结果；同时能说清边界——要调真模型的检索/回答基线和阈值标定不在 CI 里。
+**用途**：README 上那个 CI 徽章从此是**实测过的绿**，不是「写好了还没跑」。面试里被问「你怎么保证别人 clone 下来能跑」，现在的回答有依据：干净环境 + 只读 `requirements.txt` + 263 个离线单测 + 两套数据集校验，一分钟左右出结果（四次 51–65 秒）；同时能说清边界——要调真模型的检索/回答基线和阈值标定不在 CI 里。
 
 **未测 / 待补**：
 
 - **CI 只覆盖离线那一半**：检索基线、回答级基线、`calibrate_min_score.py` 都要真密钥和配额，仍是发版前人工回归（`ci.yml` 底部注释列了这三条命令）。
 - **单平台**：没有 Windows/macOS 矩阵，`rag/citations.py` 里同时处理 `\` 与 `/` 的路径归一化也就没有被跨平台验证过。
 - **徽章只做静态核对**：`actions/workflows/ci.yml/badge.svg?branch=main` 实测 HTTP 200、SVG 文本是 `CI passing`；`img.shields.io` 本机直连返回 000，所以 README 用 GitHub 原生徽章地址。没有在浏览器里逐像素看过渲染效果。
-- **推送靠的是反复重试，不是某个神奇参数**：本机直连 `github.com` 的 443 会话会随机死在 TLS 之后的 HTTP 阶段——第一次报 `Recv failure: Connection was reset`，加 `-c http.version=HTTP/1.1` 后仍然连败 4 次（`Failed to connect to github.com port 443 after 21095 ms`），**第 5 次原样重试才成功**；同一时间窗里 `api.github.com` 全程 200，`curl -I https://github.com/...` 也能 0.1 秒内连上。所以结论是「本机到 github.com 的链路抖动」，`HTTP/1.1` 只是当时恰好和成功混在一起，**别把它当 fixes**。下次再遇到：先确认 api 与 curl 通、再原样重试几次，不要怀疑凭据、更不要改用别的工具或身份绕过。
+- **推送靠的是反复重试，不是某个神奇参数**：本机直连 `github.com` 的 443 会话会随机死在 TLS 之后的 HTTP 阶段——第一次上线推送报 `Recv failure: Connection was reset`，加 `-c http.version=HTTP/1.1` 后仍然连败 4 次（`Failed to connect to github.com port 443 after 21095 ms`），**第 5 次原样重试才成功**；`c3fe899` 那次是同一现象重演：`Recv failure` 与 `Failed to connect ... port 443` 交替出现，原样重试到后面才成功。而同一时间窗里 `api.github.com` 全程正常，`curl -I https://github.com/...` 也能 0.1 秒内连上。所以结论是「本机到 github.com 的链路抖动」，`HTTP/1.1` 只是当时恰好和成功混在一起，**别把它当 fixes**。下次再遇到：先确认 api 与 curl 通、再原样重试几次，不要怀疑凭据、更不要改用别的工具或身份绕过。
+- **判定推送成不成功，看远端 sha，不看这次命令有没有报错**：`c3fe899` 那次 push 已经返回 0，紧接着的 `git ls-remote origin refs/heads/main` 却单独失败（`Recv failure`），空手而归；最后是读 `api.github.com/repos/.../commits/main` 拿到远端 tip 才确认推上去的。git 的一次失败不等于前一次没生效。
+- **`.gitattributes` 生效不等于工作副本变 LF**：加了 `* text=auto eol=lf` 之后，编辑已有文件仍会保留它的 CRLF，`git commit` 时才会提示 "CRLF will be replaced by LF the next time Git touches it"。核对了 `git show HEAD:docs/testing.md` 的字节：CRLF = 0，也就是**入库内容是 LF，脏的只是本地工作副本**，CI 与本地读到的行尾从此一致。
 
 ## 6. 这些测试有什么用
 
