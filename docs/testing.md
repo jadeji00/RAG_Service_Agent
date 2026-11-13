@@ -906,14 +906,14 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl --repeat 3 \
 
 | 项 | 观测 |
 |---|---|
-| 运行 | run `43396758193`，作业 `离线检查（单测 + 数据集校验）`，`status=completed`、`conclusion=success`；随后 `0b9cc08`（本文档 + `.gitattributes`）触发的 run `43398099701` 也是 `completed / success`——**两次是不同 commit、不同触发**，绿不是偶发 |
+| 运行 | run `43396758193`，作业 `离线检查（单测 + 数据集校验）`，`status=completed`、`conclusion=success`；随后 `0b9cc08`（本文档 + `.gitattributes`）触发的 run `43398099701`、`a7ae34d`（推送归因更正）触发的 run `43402104372` 也都是 `completed / success`——**三次是不同 commit、不同触发**，绿不是偶发 |
 | 步骤 | checkout → setup-python(3.11) → 安装依赖 → 单元测试 → easy 80 题校验 → hard 25 题校验 → 全量语法编译，全部 `success` |
-| 作业墙钟 | 第一次作业 08:53:21Z → 08:54:19Z = **58 秒**（jobs API 逐步核对过）；第二次只取了 run 的 `created_at → updated_at` = **59 秒**（含排队，未再逐步核对）。大头都在装依赖 |
+| 作业墙钟 | 第一次作业 08:53:21Z → 08:54:19Z = **58 秒**（jobs API 逐步核对过）；第二、三次只取了 run 的 `created_at → updated_at` = **59 秒 / 65 秒**（含排队，未再逐步核对）。大头都在装依赖 |
 | runner | `ubuntu-latest`，单平台 |
 | 密钥 | 环境里只有 `sk-ci-placeholder-not-a-real-key`，整个作业零模型请求 |
 | 提交身份 | 26 个 commit 的 author 全是 `jadeji00 <jadeji00@users.noreply.github.com>`（仓库级 `user.email` 覆盖，全局配置仍是别的邮箱），公开仓库不暴露真实邮箱 |
 
-**用途**：README 上那个 CI 徽章从此是**实测过的绿**，不是「写好了还没跑」。面试里被问「你怎么保证别人 clone 下来能跑」，现在的回答有依据：干净环境 + 只读 `requirements.txt` + 263 个离线单测 + 两套数据集校验，58 秒出结果；同时能说清边界——要调真模型的检索/回答基线和阈值标定不在 CI 里。
+**用途**：README 上那个 CI 徽章从此是**实测过的绿**，不是「写好了还没跑」。面试里被问「你怎么保证别人 clone 下来能跑」，现在的回答有依据：干净环境 + 只读 `requirements.txt` + 263 个离线单测 + 两套数据集校验，58–65 秒出结果；同时能说清边界——要调真模型的检索/回答基线和阈值标定不在 CI 里。
 
 **未测 / 待补**：
 
