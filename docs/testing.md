@@ -340,7 +340,7 @@ python eval/calibrate_min_score.py
 |---|---|
 | 数据集校验 | `VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`，0 个错误 |
 | 单元测试 | **263 个全部通过，约 7 秒**（M2 前 84 个；M2 后 126 个：新增切分 8、混合检索 20、重排 9、RAG 服务 5；身份上线后 160 个：新增 `test_auth.py` 17、`AuthApiTest` 10、报告归属 4、报告参数补齐 3；历史压缩上线后 211 个：新增 `test_history_compressor.py` 51；引用溯源上线后 247 个：新增 `test_citations.py` 22、`CitationCaptureTest` 7、`RagServiceCitationTest` 3、`ChatRunnerCitationTest` 3、重排副本回归 1；限流上线后 263 个：新增 `test_rate_limit.py` 10、`RateLimitApiTest` 6） |
-| CI | `.github/workflows/ci.yml` 的四条命令在本地按 CI 的方式跑过一遍（占位 `DASHSCOPE_API_KEY`、同样的参数）：263 个单测 OK、`VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`、`compileall` 退出码 0。**尚未在 GitHub Actions 上真正跑过一次**——仓库还没有配 remote，见 5.17 的未测项 |
+| CI | `.github/workflows/ci.yml` 的四条命令先在本地按 CI 的方式跑过一遍（占位 `DASHSCOPE_API_KEY`、同样的参数）：263 个单测 OK、`VALIDATION_OK rows=80`、`VALIDATION_OK rows=25`、`compileall` 退出码 0。2026-11-13 已推到 GitHub，**首次真实运行通过**（workflow run `43396758193`，`ubuntu-latest`，作业墙钟 58 秒，8 步全绿），见 5.19 |
 | 向量库 | **145 个向量**、145 个唯一 ID、145 段唯一内容、5 个来源/md5 组合、`hnsw:space=cosine`、`split_sig=95ec9f1c38e8`（M2 前：66 个向量、默认 L2） |
 | 索引幂等 | 同一语料第二次 `load_document()` 全部跳过，不重新 embedding、不产生重复 ID |
 | easy 回答级评测 | 80 题全部执行，生成与判分错误 0（M2 后复跑见 5.13） |
@@ -839,7 +839,7 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 
 **未测 / 待补**：
 
-- **CI 从未在 GitHub Actions 上真正跑过**：这个仓库**还没有配 remote**（`git remote -v` 为空），workflow 文件只是写好了、四条命令在本地按同样的环境和参数预演通过。要看到绿色勾，得先推到 GitHub。这是当前最明确的一个缺口。
+- ~~**CI 从未在 GitHub Actions 上真正跑过**：这个仓库**还没有配 remote**（`git remote -v` 为空），workflow 文件只是写好了、四条命令在本地按同样的环境和参数预演通过。要看到绿色勾，得先推到 GitHub。这是当前最明确的一个缺口。~~ 已补上：仓库已公开并推送，首次真实运行 2026-11-13 通过，见 5.19。
 - **只跑 ubuntu-latest**：没有 Windows/macOS 矩阵。代码里没有平台相关分支（`rag/citations.py` 的路径归一化同时处理 `\` 与 `/`），本地开发机是 Windows 且全套件通过，但没有 CI 层面的交叉验证。
 - **多 worker / 多实例没测**：限流计数是进程内存，`uvicorn --workers 2` 时实际上限变成 40 次/分钟。这一条是设计取舍（决策 18）里写明的，但没有实测数据。
 - **并发竞态没测**：`hit()` 用 `threading.Lock` 保护，但没有写多线程压测用例去验证竞态；单进程 + FastAPI 同步路由下实际是串行进入的。
@@ -894,6 +894,34 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl --repeat 3 \
 - **negative 现在实际上没有被真正评测**。15/15 走同一条短路分支，judge 只是在确认「这段固定话术算拒答」——它永远算。要检验模型的开放式拒答能力，得把 `min_score` 临时调低让模型真的作答，或者补一批「重排分能过阈值、但知识库里其实没有答案」的灰区负样本（§8 第 5 条）。
 - **correctness=1 的三道题没有逐题归因**。`hard-qa-004`、`-014`、`-017` 稳定或部分稳定地停在部分正确，没有拆开看是检索少给了一个片段，还是 gold answer 的表述太窄导致语义正确被判 partial（§7 限制里提过这个已知偏差）。
 
+### 5.19 公开仓库上线与 CI 首次真实运行（2026-11-13）
+
+补的是 5.17 末尾那条「workflow 从未在 GitHub Actions 上真正执行过」。仓库：`https://github.com/jadeji00/RAG_Service_Agent`（public，MIT；本次上线推上去 26 个 commit，`git ls-remote` 与本地 tip 一致）。
+
+**测什么**：CI 的离线那一半在**不是这台开发机**的环境里能不能跑绿——干净 Linux、只按 `requirements.txt` 装依赖、只给占位 Key。本地预演只能证明「这四条命令在我这儿过得去」，证明不了依赖清单自足。
+
+**怎么测**：仓库建成 public 并推送，`push: branches=[main]` 自动触发；结果从 REST API 读（`/actions/runs`、`/actions/runs/{id}/jobs`），不靠页面肉眼看颜色。
+
+**结果**：
+
+| 项 | 观测 |
+|---|---|
+| 运行 | run `43396758193`，作业 `离线检查（单测 + 数据集校验）`，`status=completed`、`conclusion=success` |
+| 步骤 | checkout → setup-python(3.11) → 安装依赖 → 单元测试 → easy 80 题校验 → hard 25 题校验 → 全量语法编译，全部 `success` |
+| 作业墙钟 | 08:53:21Z → 08:54:19Z = **58 秒**，大头在装依赖 |
+| runner | `ubuntu-latest`，单平台 |
+| 密钥 | 环境里只有 `sk-ci-placeholder-not-a-real-key`，整个作业零模型请求 |
+| 提交身份 | 26 个 commit 的 author 全是 `jadeji00 <jadeji00@users.noreply.github.com>`（仓库级 `user.email` 覆盖，全局配置仍是别的邮箱），公开仓库不暴露真实邮箱 |
+
+**用途**：README 上那个 CI 徽章从此是**实测过的绿**，不是「写好了还没跑」。面试里被问「你怎么保证别人 clone 下来能跑」，现在的回答有依据：干净环境 + 只读 `requirements.txt` + 263 个离线单测 + 两套数据集校验，58 秒出结果；同时能说清边界——要调真模型的检索/回答基线和阈值标定不在 CI 里。
+
+**未测 / 待补**：
+
+- **CI 只覆盖离线那一半**：检索基线、回答级基线、`calibrate_min_score.py` 都要真密钥和配额，仍是发版前人工回归（`ci.yml` 底部注释列了这三条命令）。
+- **单平台**：没有 Windows/macOS 矩阵，`rag/citations.py` 里同时处理 `\` 与 `/` 的路径归一化也就没有被跨平台验证过。
+- **徽章只做静态核对**：`actions/workflows/ci.yml/badge.svg?branch=main` 实测 HTTP 200、SVG 文本是 `CI passing`；`img.shields.io` 本机直连返回 000，所以 README 用 GitHub 原生徽章地址。没有在浏览器里逐像素看过渲染效果。
+- **推送本身依赖一次降级重试**：本机直连 `github.com` 在 TLS 之后的 HTTP 阶段被重置（`Recv failure: Connection was reset`），换成 `git -c http.version=HTTP/1.1 push` 才成功，而 `api.github.com` 全程正常。这是本机网络环境的性质、与仓库无关，但它解释了「为什么第一次推送失败、第二次成功」——再遇到时先试 HTTP/1.1，别怀疑凭据。
+
 ## 6. 这些测试有什么用
 
 1. **改动前先知道现状。** M2 之前能说“easy Top-1 65.45%、Top-3 94.55%，hard Top-1 55.00%、Top-8 90.00%”，而不是“感觉挺准”；正是这几个数字指出了「文件能找到、片段找不到」。
@@ -931,5 +959,5 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl --repeat 3 \
 5. **越界边界补强**：`neg-004` / `neg-009` 已由确定性拒答覆盖（见 5.10），`hard-neg-001/002/003/004/005` 已由无证据兜底覆盖（见 5.13）；剩下的是「知识库里有相邻内容、但答案其实不存在」这类灰区，仍靠模型判断。
 6. **重排可观测性**：~~重排分低于阈值时把 `top_score` 写进 trace span~~（已完成，`rag:retrieve` span 现在带 `rerank_top_score` 与 `rerank` 状态，见 5.16）；剩下的是给 `rerank=fallback` 加计数与告警，便于事后判断是「真没证据」还是「重排挂了」。
 7. **服务化收尾**：~~给 `/chat/stream` 加登录态与 `thread_id` 归属校验~~（已完成，见 5.14）；~~会话历史压缩~~（已完成，见 5.15）；~~回答引用溯源~~（已完成，见 5.16）；~~按用户限流~~（已完成，见 5.17）；剩下把限流计数换成共享存储（多 worker 才准）、trace 换 Postgres 或接 OpenTelemetry、观测数据按账号隔离、补浏览器端自动化测试（当前浏览器验证靠手工驱动 DOM，截图能力受限于宿主视口）。
-8. ~~把两套 `--validate-only` + 单测接进 CI~~（已完成，`.github/workflows/ci.yml` 覆盖 263 个单测 + 两套数据集校验 + 全量编译，见 5.17）；**但仓库还没有 remote，workflow 从未在 GitHub Actions 上真正执行过**——推上去看到第一次绿色才算落地。`calibrate_min_score.py` 与检索/回答级基线要调真实模型，仍作为人工回归。
+8. ~~把两套 `--validate-only` + 单测接进 CI~~（已完成，`.github/workflows/ci.yml` 覆盖 263 个单测 + 两套数据集校验 + 全量编译，见 5.17）；~~仓库还没有 remote，workflow 从未在 GitHub Actions 上真正执行过~~（已完成：仓库已公开推送，首次真实运行 2026-11-13 通过，见 5.19）。`calibrate_min_score.py` 与检索/回答级基线要调真实模型，仍作为人工回归。
 9. **把实跑剧本入库**：`log/` 被 `.gitignore` 忽略，`verify_history.py` / `verify_citations.py` / `verify_rate_limit.py` 这几份端到端验证脚本只在本地，clone 仓库的人复跑不了。挪到一个受版本控制的目录（例如 `tools/verify/`）之前要先确认脚本里没有硬编码的演示密码之外的敏感值。

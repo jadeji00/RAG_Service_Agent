@@ -1,0 +1,4 @@
+# 仓库内一律存 LF：开发机是 Windows（core.autocrlf=true）、CI 是 Linux，
+# 不钉死换行符的话同一份文件会在两边各产生一次「整文件都改了」的假 diff。
+# 语料 txt、评测 jsonl 同理——它们参与内容指纹计算，换行符不能被静默改写。
+* text=auto eol=lf

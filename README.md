@@ -1,6 +1,8 @@
 # 智扫通 · 扫地机器人智能客服
 
-基于 LangChain 1.x + LangGraph 的 RAG 智能客服示例：既能回答扫地/扫拖机器人的选购、使用、故障与保养问题，也能按用户和月份生成使用情况报告。
+![CI](https://github.com/jadeji00/RAG_Service_Agent/actions/workflows/ci.yml/badge.svg?branch=main)
+
+基于 LangChain 1.x + LangGraph 的 RAG 智能客服示例：既能回答扫地/扫拖机器人的选购、使用、故障与保养问题，也能按用户和月份生成使用情况报告。仓库地址：`https://github.com/jadeji00/RAG_Service_Agent`。
 
 > 「智扫通 / RoboCare」是本项目虚构的演示品牌；知识库语料是自行整理的通用产品问答，`data/external/records.csv` 是模拟的用户月度使用记录，都不指向任何真实厂商或在售型号。换成你自己的品牌与语料即可复用整条链路。
 
@@ -212,7 +214,7 @@ python -m unittest discover -s tests              # 263 个单测，不需要 AP
 
 `eval/results/hard_pass3.json` 是 M2 之前那一轮的留档，不要覆盖，前后对比靠它。
 
-`.github/workflows/ci.yml` 把上面**不调模型**的那一半接进了 GitHub Actions：263 个单测、easy 80 题与 hard 25 题的数据集校验、全量 `compileall`。检索基线、回答级基线和阈值标定都要调真实模型（既烧配额又需要真密钥），留在发版前人工跑。CI 里那个 `DASHSCOPE_API_KEY` 是占位值——`model/factory.py` 在导入那一刻就构造 `ChatTongyi`，不给这个变量连离线单测都起不来。
+`.github/workflows/ci.yml` 把上面**不调模型**的那一半接进了 GitHub Actions：263 个单测、easy 80 题与 hard 25 题的数据集校验、全量 `compileall`。检索基线、回答级基线和阈值标定都要调真实模型（既烧配额又需要真密钥），留在发版前人工跑。CI 里那个 `DASHSCOPE_API_KEY` 是占位值——`model/factory.py` 在导入那一刻就构造 `ChatTongyi`，不给这个变量连离线单测都起不来。2026-11-13 首次真实运行已通过（ubuntu-latest，58 秒，8 步全绿），运行记录见 `docs/testing.md` 5.19。
 
 检索基线（145 chunks、`text-embedding-v4`、向量 + BM25 + RRF + `gte-rerank-v2`、k=8）：
 
