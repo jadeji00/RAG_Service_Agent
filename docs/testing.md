@@ -906,9 +906,9 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl --repeat 3 \
 
 | 项 | 观测 |
 |---|---|
-| 运行 | run `43396758193`，作业 `离线检查（单测 + 数据集校验）`，`status=completed`、`conclusion=success` |
+| 运行 | run `43396758193`，作业 `离线检查（单测 + 数据集校验）`，`status=completed`、`conclusion=success`；随后 `0b9cc08`（本文档 + `.gitattributes`）触发的 run `43398099701` 也是 `completed / success`——**两次是不同 commit、不同触发**，绿不是偶发 |
 | 步骤 | checkout → setup-python(3.11) → 安装依赖 → 单元测试 → easy 80 题校验 → hard 25 题校验 → 全量语法编译，全部 `success` |
-| 作业墙钟 | 08:53:21Z → 08:54:19Z = **58 秒**，大头在装依赖 |
+| 作业墙钟 | 第一次作业 08:53:21Z → 08:54:19Z = **58 秒**（jobs API 逐步核对过）；第二次只取了 run 的 `created_at → updated_at` = **59 秒**（含排队，未再逐步核对）。大头都在装依赖 |
 | runner | `ubuntu-latest`，单平台 |
 | 密钥 | 环境里只有 `sk-ci-placeholder-not-a-real-key`，整个作业零模型请求 |
 | 提交身份 | 26 个 commit 的 author 全是 `jadeji00 <jadeji00@users.noreply.github.com>`（仓库级 `user.email` 覆盖，全局配置仍是别的邮箱），公开仓库不暴露真实邮箱 |
@@ -920,7 +920,7 @@ python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl --repeat 3 \
 - **CI 只覆盖离线那一半**：检索基线、回答级基线、`calibrate_min_score.py` 都要真密钥和配额，仍是发版前人工回归（`ci.yml` 底部注释列了这三条命令）。
 - **单平台**：没有 Windows/macOS 矩阵，`rag/citations.py` 里同时处理 `\` 与 `/` 的路径归一化也就没有被跨平台验证过。
 - **徽章只做静态核对**：`actions/workflows/ci.yml/badge.svg?branch=main` 实测 HTTP 200、SVG 文本是 `CI passing`；`img.shields.io` 本机直连返回 000，所以 README 用 GitHub 原生徽章地址。没有在浏览器里逐像素看过渲染效果。
-- **推送本身依赖一次降级重试**：本机直连 `github.com` 在 TLS 之后的 HTTP 阶段被重置（`Recv failure: Connection was reset`），换成 `git -c http.version=HTTP/1.1 push` 才成功，而 `api.github.com` 全程正常。这是本机网络环境的性质、与仓库无关，但它解释了「为什么第一次推送失败、第二次成功」——再遇到时先试 HTTP/1.1，别怀疑凭据。
+- **推送靠的是反复重试，不是某个神奇参数**：本机直连 `github.com` 的 443 会话会随机死在 TLS 之后的 HTTP 阶段——第一次报 `Recv failure: Connection was reset`，加 `-c http.version=HTTP/1.1` 后仍然连败 4 次（`Failed to connect to github.com port 443 after 21095 ms`），**第 5 次原样重试才成功**；同一时间窗里 `api.github.com` 全程 200，`curl -I https://github.com/...` 也能 0.1 秒内连上。所以结论是「本机到 github.com 的链路抖动」，`HTTP/1.1` 只是当时恰好和成功混在一起，**别把它当 fixes**。下次再遇到：先确认 api 与 curl 通、再原样重试几次，不要怀疑凭据、更不要改用别的工具或身份绕过。
 
 ## 6. 这些测试有什么用
 
