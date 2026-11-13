@@ -199,7 +199,7 @@ hard 知识问答：19 题完全正确、1 题部分正确（`hard-qa-014`）、
 
 1. **easy 完全有据从 100% 掉到 98.18%，是 M2 的真实代价**：`qa-017`（回充失败）在更窄更聚焦的上下文之外补了一句资料里没有的「电池老化也可能影响充电效果」。检索变准会让模型更敢往下推，这是提示词约束的问题，不是检索退步。
 2. **easy negative 的 100% 仍然是规则功劳**：15 道全部命中 `is_out_of_scope_query`，P50 259 ms、0 token（比 M2 前的 135 ms 慢，慢的是检索那一段——评测口径的 `gen_latency_ms` 含 `retrieve()`）。
-3. **hard negative 现在多了一层确定性兜底**（见 3.4），但**本轮 `repeat=1`，pass^3 仍是 M2 前的 60%**（3.5），稳定性没有重新量化。
+3. **hard negative 现在多了一层确定性兜底**（见 3.4）。本节是 `repeat=1`，稳定性后来用 `--repeat 3` 补测了：严格 pass^3 从 60% 到 100%、波动题归零，**但那是 15/15 次运行全部走兜底短路、不调生成模型换来的**（回答逐字相同、`sources=0`、生成 P50 1234ms → 352ms），不等于模型的拒答能力变稳了，见 3.5 与 `docs/testing.md` 5.18。
 4. **报告链路不受 M2 影响**：报告不经过 RAG 检索，字段完整率与子流程执行率都是 100%，P50 从 7379 ms 微降到 6915 ms，属抖动范围。
 
 k 敏感性（hard 20 题，只改回答级检索条数）：
@@ -277,20 +277,25 @@ k=5 修好了 `hard-qa-011` 的 faithfulness，却让 `hard-qa-017` 的 correctn
 
 negative 从 86.67% 到 100% 是**机制变化不是模型变好**：`RagSummarizeService.answer` 先做 `is_out_of_scope_query` 判断，15 道 easy 负样本全部命中规则、生成 P50 135 ms、0 token。这证明规则覆盖了这 15 题，不代表开放式越界判断已解决。
 
-#### pass^k（2026-11-07，M2 前）
+#### pass^k：M2 前（2026-11-07）与 M2 后（2026-11-13）
 
-同题独立跑 3 次（`--repeat 3`），结果文件 `hard_pass3.*` / `report_pass3.*`：
+同题独立跑 3 次（`--repeat 3`）。结果文件：M2 前 `hard_pass3.*` / `report_pass3.*`，M2 后 `hard_pass3_post_m2.*`。
 
-| 数据集 | 题数 | 严格 pass^3 | 至少一次通过 | 平均单次通过 | 波动题 |
+| 数据集 | 题数 | 严格 pass^3（M2 前 → 后） | 至少一次通过 | 平均单次通过（M2 前 → 后） | 波动题（M2 前 → 后） |
 |---|---|---|---|---|---|
-| hard answerable | 20 | 95.00% | 100.00% | 96.67% | `hard-qa-016` |
-| hard negative | 5 | **60.00%** | 100.00% | 86.67% | `hard-neg-002` / `hard-neg-004` |
-| hard 合计 | 25 | **88.00%** | 100.00% | 94.67% | 3 道 |
-| easy report | 10 | **100.00%** | 100.00% | 100.00% | 0 道 |
+| hard answerable | 20 | 95.00% → **100.00%** | 100.00% → 100.00% | 96.67% → **100.00%** | 1 → **0** |
+| hard negative | 5 | **60.00% → 100.00%** | 100.00% → 100.00% | 86.67% → **100.00%** | 2 → **0** |
+| hard 合计 | 25 | **88.00% → 100.00%** | 100.00% → 100.00% | 94.67% → **100.00%** | 3 → **0** |
+| easy report | 10 | **100.00%**（未重跑） | 100.00% | 100.00% | 0 道 |
 
-hard negative 单次是 5/5、严格 pass^3 只有 3/5，两次失败都是「没有明确拒绝，而是继续给跨领域操作建议」。报告题 pass^3 全过且零波动，说明确定性报告子流程把控制流固定后稳定性显著优于旧 ReAct 链路。
+M2 前 hard negative 单次是 5/5、严格 pass^3 只有 3/5，两次失败都是「没有明确拒绝，而是继续给跨领域操作建议」（`hard-neg-002` 补了「越障高度 1.5–2 cm」，`hard-neg-004` 说「不确定是否支持」之后继续给充电注意事项）。报告题 pass^3 全过且零波动，说明确定性报告子流程把控制流固定后稳定性显著优于旧 ReAct 链路。
 
-> **这张表还没在 M2 后重跑**，是当前评测侧最该补的一格：`hard-qa-016` 这个波动源已经被重排修好（Span@1），negative 也多了一层确定性兜底，严格 pass^3 大概率会上升，但没有数据就不能这么说。
+M2 后两侧的 100% 成因不同，**不能合并成一句「M2 让稳定性变好了」**：
+
+- **answerable 是检索真修好了。** 唯一的旧波动题 `hard-qa-016`（儿童锁 + 边刷防护）从 `pass_count=1`、三轮 correctness 0/0/1、判分理由「未提及儿童锁和边刷防护」，变成 3/3 全 correctness=2；它在 M2 前属于 Top-8 完全召不回片段的类别。20 道可答题全部拿到 1–3 条真实引用，**兜底零误伤**——逐题查过 `sources` 长度和回答文本，没有一条命中 `NO_EVIDENCE_ANSWER`。这一条必须查，因为兜底是个会短路的开关，阈值偏高时它会静默把可答题也变成拒答，而那样 pass 率反而更好看。
+- **negative 的 100% 是兜底送的，不是模型更会拒答。** 15/15 次运行返回逐字相同的 `NO_EVIDENCE_ANSWER`、`sources=0`，生成 P50 1234ms → 352ms（P95 2031ms → 919ms），说明重排最高分低于 `min_score=0.16`，`rag_service.py` 的 `if not context_docs` 分支直接返回、没进 `chain.invoke`。固定模板不可能波动，严格 pass^3 是**结构上必然 100%**。把拒答从「指望模型自觉」改成「代码短路」才是波动归零的原因，这是工程手段换来的稳定性。
+
+顺带量出一个此前没记录的口径噪声：上表之外的「完全正确 / 完全有据」是**每题取一次代表性判分**，不是三轮聚合。同一份代码、同一个 145 chunks 语料，`hard_answer_m2.json`（repeat=1，01:44）是完全正确 95% / 完全有据 95%，`hard_pass3_post_m2.json`（repeat=3，13:58）是 85% / 100%——差 10 个百分点且方向相反。逐题对照：repeat=1 只有 `hard-qa-014` 落在 corr=1，repeat=3 是 `hard-qa-004`、`-014`、`-017`；三轮内部本身就不一致（`hard-qa-003` 是 2/1/1，`hard-qa-004` 是 1/1/2）。20 题的小集上一道题就是 5 个百分点，判分又和生成同为 `qwen-max`。**所以两处都保留原数字并注明口径，不要用单次跑的正确率下结论，也不要拿它覆盖另一次的结果。**
 
 ## 4. 复现
 
@@ -316,9 +321,10 @@ python eval/run_eval.py --dataset eval/dataset_hard.jsonl --ks 1,3,5,8
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
   --out eval/results/hard_answer.json
 
-# pass^k：同一题独立跑 3 次
+# pass^k：同一题独立跑 3 次（hard 约 4 分钟）
+#   hard_pass3.json 是 M2 之前的留档，不要覆盖，前后对比靠它
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
-  --repeat 3 --out eval/results/hard_pass3.json
+  --repeat 3 --out eval/results/hard_pass3_post_m2.json
 
 # k 敏感性：只改回答级检索条数
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
@@ -332,7 +338,7 @@ python eval/calibrate_min_score.py
 #   mode: hybrid + rerank.enabled: false  → 只看混合召回
 #   mode: vector + rerank.enabled: false  → 回到 M2 之前的纯向量
 
-# 纯函数单测（160 个，不需要 API Key）
+# 纯函数单测（263 个，不需要 API Key）
 python -m unittest discover -s tests
 ```
 
@@ -349,7 +355,9 @@ python -m unittest discover -s tests
 - `eval/results/answer_baseline.*`：M2 前的回答级旧基线；
 - `eval/results/answer_after_m3m4m5.*`：M4 确定性拒答上线后的 easy 复跑；
 - `eval/results/hard_answer.*`：M2 前的 hard 回答基线；
-- `eval/results/hard_pass3.*` / `report_pass3.*`：pass^3（严格 / 至少一次 / 波动题），**M2 前数据**。
+- `eval/results/hard_pass3.*`：hard pass^3（严格 / 至少一次 / 波动题），**M2 前数据，留档不要覆盖**；
+- `eval/results/hard_pass3_post_m2.*`：**当前** hard pass^3（M2 后），见 3.5；
+- `eval/results/report_pass3.*`：easy 报告题 pass^3，验证确定性报告子流程稳定性。
 
 ## 5. 新增题目
 

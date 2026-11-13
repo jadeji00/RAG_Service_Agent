@@ -291,9 +291,10 @@ python eval/run_answer_eval.py
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
   --out eval/results/hard_answer.json
 
-# 7) pass^k：同一题独立跑 k 次
+# 7) pass^k：同一题独立跑 k 次（hard 约 4 分钟）
+#    hard_pass3.json 是 M2 之前的留档，不要覆盖，前后对比靠它
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
-  --repeat 3 --out eval/results/hard_pass3.json
+  --repeat 3 --out eval/results/hard_pass3_post_m2.json
 
 # 8) k 敏感性：只改回答级检索条数，重排与切分不动
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
@@ -320,7 +321,8 @@ python eval/calibrate_min_score.py
 - `eval/results/answer_baseline.md`：回答级人读版，含失败样例与延迟；
 - `eval/results/hard_baseline.*`：hard split 检索基线；
 - `eval/results/hard_answer.*`：hard split 回答级基线；
-- `eval/results/hard_pass3.*`：hard split pass^3，含严格通过率与波动题；
+- `eval/results/hard_pass3.*`：hard split pass^3（M2 之前，66 chunks），含严格通过率与波动题；
+- `eval/results/hard_pass3_post_m2.*`：hard split pass^3（M2 之后，145 chunks），见 5.18；
 - `eval/results/report_pass3.*`：easy 报告题 pass^3，用于验证报告子流程稳定性；
 - `eval/results/{easy,hard}_m2a_chunking.*`：M2-A QA 感知切分后的检索结果（145 chunks）；
 - `eval/results/{easy,hard}_m2b_hybrid.*`：M2-B 加上 BM25 + RRF 混合召回；
@@ -343,6 +345,7 @@ python eval/calibrate_min_score.py
 | 索引幂等 | 同一语料第二次 `load_document()` 全部跳过，不重新 embedding、不产生重复 ID |
 | easy 回答级评测 | 80 题全部执行，生成与判分错误 0（M2 后复跑见 5.13） |
 | hard 回答级评测 | 25 题全部执行，生成与判分错误 0 |
+| hard pass^3（M2 后） | 25 题 × 3 次，75 次生成 + 75 次判分，`errors=0 judge_errors=0`，约 3 分 52 秒；overall 严格 pass^3 **100.00%**、波动题 **0**（M2 前 88.00%、3 道波动），见 5.18 |
 | HTTP 冒烟 | QA / 报告 / 越界三条链路 + `/health`、`/history`、`/traces`、`/trace/{id}`、`/usage` 均返回正常 |
 | Python 编译 | `py_compile` 通过 |
 
@@ -488,6 +491,8 @@ hard 的完全正确率 75.00% 明显低于 easy 的 80.00%，关键词命中率
 
 这就是 pass^k 的价值：**单次 100% 不等于稳定 100%**。hard negative 的 5/5 是运气好，严格 pass^3 的 60% 才是当前真实稳定性。easy 80 题没有跑 pass^3，原因是成本约为单次的 3 倍；hard 25 题 + 报告 10 题先用较小成本回答「稳不稳」。
 
+> **本节数据已被 5.18 取代。** 这里是 M2 之前（66 chunks、纯向量 L2、无兜底）的留档，保留是为了对照。M2 后重跑的结果是 overall 严格 pass^3 100%、波动题 0，但 negative 侧的 100% 来自确定性兜底短路而非模型能力提升——两侧成因不同，详见 5.18。
+
 ### 5.9 M3 / M4 / M5 实跑
 
 服务用 `uvicorn server.app:app --port 8123` 启动，前端与接口走同一条 SSE 链路。三条请求各跑一次（2026-11-08）：
@@ -524,7 +529,7 @@ hard 的完全正确率 75.00% 明显低于 easy 的 80.00%，关键词命中率
 - **negative 100% 是规则带来的，不是模型进步**：15 道 easy 负样本全部命中 `is_out_of_scope_query`，`RagSummarizeService.answer` 直接返回固定话术，不调用生成模型，所以 P50 135ms、0 token。hard 5 道负样本是“能力边界”问题，规则不拦，仍是模型判断，pass^3 只有 60%——easy 的 100% 不能代表真实边界能力。
 - **answerable 100% 是单次通过率，不是检索修好**：完全正确率仍是 81.82%（45 题），`qa-042` 这次是 correctness=1 的部分通过，检索 Top-8 仍未命中 Q3。与 5.3 的结论一致，M2 的 QA 切分仍是待办。
 
-> 后续：M2 已完成，这题的检索与判分都修好了，easy 完全正确率升到 90.91%，见 **5.13**。
+> 后续：M2 已完成，这题的检索与判分都修好了，easy 完全正确率升到 90.91%，见 **5.13**。上面那句「hard 5 道负样本规则不拦、仍是模型判断、pass^3 只有 60%」也已过期：M2-D 的无证据兜底现在把这 5 道全部接住，M2 后重跑的严格 pass^3 是 100%、波动题 0，但那是固定话术短路换来的，不代表模型的开放式拒答能力变稳了，见 **5.18**。
 
 报告复跑：四个字段 10/10，平均事实片段覆盖率 97%，忠实率 100%，完全有据率 90%，子流程执行率 100%，`fetch` 参数正确率 100%；生成 P50 7.38 秒、P95 11.88 秒。
 
@@ -642,7 +647,7 @@ hard（20 道可答题，同一向量库）：
 两处必须拆开归因，不能直接说「M2 让回答变好了」：
 
 - **easy 完全有据从 100% 掉到 98.18%，是 M2 的真实代价**：唯一一题 `qa-017`（回充失败怎么办），重排后上下文更窄更聚焦，模型在正确答案之外补了一句资料里没有的「电池老化也可能影响充电效果」。检索变准会让模型更敢往下推，这是提示词约束的问题，不是检索退步。
-- **negative 100% 依然主要是规则功劳**：15 道 easy 负样本仍全部被 `is_out_of_scope_query` 拦下、0 token；hard 5 道是「能力边界」问题，现在多了一层确定性兜底（下节），但**本轮 repeat=1，没有重跑 pass^3**，所以 5.8 里 hard negative 严格 pass^3 = 60% 这个数还没有被更新，不能说稳定性已解决。
+- **negative 100% 依然主要是规则功劳**：15 道 easy 负样本仍全部被 `is_out_of_scope_query` 拦下、0 token；hard 5 道是「能力边界」问题，现在多了一层确定性兜底（下节）。本节是 `repeat=1`，稳定性后来用 `--repeat 3` 补测了：hard overall 严格 pass^3 从 M2 前的 88% 到 100%、波动题 3 → 0，**但 negative 侧的 100% 是兜底短路换来的（15/15 次返回同一段固定话术、不调生成模型），不是模型拒答能力变稳了**，见 5.18。
 
 生成延迟基本没变：easy answerable P50 1637 → 1868 ms、hard 1706 → 1754 ms，都在 API 抖动范围内；easy negative P50 135 → **259 ms**，涨的是检索（重排那一次调用），因为评测口径的 `gen_latency_ms` 含 `retrieve()`，即使最终不调生成模型也要先检索。
 
@@ -676,7 +681,7 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 
 #### 未测 / 待补
 
-- **easy 全量 pass^3 未跑**：成本约为单次 3 倍，本轮只跑了 repeat=1；hard pass^3 也还是 M2 前的旧数据（5.8），M2 后的稳定性尚未量化。
+- **easy 全量 pass^3 未跑**：成本约为单次 3 倍，本轮只跑了 repeat=1。hard pass^3 已在 M2 后补测（见 5.18：overall 严格 100%、波动题 0），但 negative 侧的 100% 来自兜底短路，那 5 道题实际上没有再评测模型的拒答能力。
 - **重排降级路径只做了单测**，没有实测真实限流/超时下的端到端表现，也没有降级告警。
 - **BM25 索引是进程内的**：多 worker 部署时各自建索引，语料更新后没有跨进程失效机制，本轮只在单进程下验证。
 - **`min_score` 只有 4% 余量**，扰动测试只做了 1 题 × 3 次（抖动 ±0.0001），没有覆盖全部边界样本，也没有测重排模型版本更新后的分数漂移。
@@ -842,6 +847,53 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 - **陈旧 key 清扫只在单测里跑到**：`_MAX_TRACKED_KEYS=4096` 的清扫分支需要 4097 个不同 key，真实流量下要很久才会碰到。
 - **验证脚本没有入库**：`log/` 整个被 `.gitignore` 忽略，所以 `log/verify_rate_limit.py`、`log/verify_citations.py`、`log/verify_history.py` 这几份实跑剧本**只存在于这台机器上**，clone 仓库的人复跑不了。文档里凡是提到它们的地方都应当按「本地脚本」理解。
 
+### 5.18 M2 后重跑 hard pass^3（2026-11-13）
+
+补的是 §8 里那条「评测侧最该补的一格」：5.8 的 hard pass^3（严格 88%、negative 60%）是 M2 之前 66 chunks 纯向量时代的数据，README 一直在引用它。
+
+**怎么跑**：
+
+```bash
+python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl --repeat 3 \
+  --out eval/results/hard_pass3_post_m2.json
+```
+
+25 题 × 3 次 = 75 次生成 + 75 次判分，耗时约 3 分 52 秒（13:54:17 → 13:58:09）。其中 15 次（5 道负样本 × 3）走无证据兜底、不调生成模型，实际付费调用是 60 次生成 + 75 次判分。`errors=0 judge_errors=0`。旧结果 `hard_pass3.json` 保留不动，前后对比靠它。
+
+**结果**：
+
+| 口径 | M2 前（66 chunks） | M2 后（145 chunks） |
+|---|---|---|
+| overall 严格 pass^3 | 88.00%（22/25） | **100.00%（25/25）** |
+| answerable 严格 pass^3 | 95.00% | **100.00%** |
+| negative 严格 pass^3 | 60.00% | **100.00%** |
+| 平均单次通过率 | 94.67% | **100.00%** |
+| 波动题 | 3 | **0** |
+| answerable 生成 P50 | 1674 ms | 1680 ms |
+| negative 生成 P50 | 1234 ms | **352 ms** |
+
+**两侧 100% 的成因完全不同，必须分开讲。**
+
+*answerable 是检索真修好了。* 唯一的旧失败题 `hard-qa-016`（家里有小孩，边刷和 App 分别要防什么）从 `pass_count=1`、三轮 correctness = 0/0/1、判分理由「未提及儿童锁和边刷防护」，变成 `pass_count=3`、三轮全 correctness=2。这道题在 M2 前属于 Top-8 完全召不回片段的类别。20 道可答题**全部拿到 1–3 条真实引用，无证据兜底零误伤**（逐题查过 `sources` 长度和回答文本，没有一条命中 `NO_EVIDENCE_ANSWER` 模板）——这一点很关键，因为兜底是个会短路的开关，如果阈值偏高，它会静默地把可答题也变成拒答，而那种情况下 pass 率反而会好看。
+
+*negative 的 100% 是确定性兜底送的，不是模型更会拒答。* 15/15 次运行返回**逐字相同**的 `NO_EVIDENCE_ANSWER`、`sources=0`，生成 P50 从 1234 ms 掉到 352 ms（P95 从 2031 ms 到 919 ms），说明重排最高分低于 `min_score=0.16`，`rag_service.py:86` 那个 `if not context_docs` 分支直接返回，压根没进 `chain.invoke`。固定模板不可能波动，所以严格 pass^3 是**结构上必然 100%**。对比 M2 前：`hard-neg-002` 的第二轮在拒答之后补了「越障高度 1.5–2 cm、需要装坡道」这种编造细节被判负，`hard-neg-004` 的第三轮说「不确定是否支持」之后继续给充电注意事项被判负。**把拒答从「指望模型自觉」改成「代码短路」才是波动归零的原因**，这是工程手段换来的稳定性，不是模型能力。
+
+**顺带量出一个口径噪声，之前没记录过。** README 回答级表格里的「完全正确 / 完全有据」是**每题取一次代表性判分**，不是三轮的聚合：
+
+| 同一份代码、同一个 145 chunks 语料 | 完全正确 | 完全有据 | 关键词命中 |
+|---|---|---|---|
+| `hard_answer_m2.json`（repeat=1，01:44） | 95.00% | 95.00% | 77.50% |
+| `hard_pass3_post_m2.json`（repeat=3，13:58） | 85.00% | 100.00% | 80.00% |
+
+差 10 个百分点，方向还相反。逐题对照定位到边界抖动：repeat=1 只有 `hard-qa-014` 落在 corr=1，repeat=3 是 `hard-qa-004`、`-014`、`-017`；而三轮内部本身就不一致——`hard-qa-003` 三轮是 2/1/1，`hard-qa-004` 是 1/1/2。20 题的小集上一道题就是 5 个百分点，判分模型又和生成模型同为 `qwen-max`（自偏好 + corr=1/2 边界模糊）。**所以 README 没有把 95% 覆盖成 85%**，两个数都留着并注明口径；要看稳定性只能看 pass^3（60 次运行聚合），不能用单次跑的正确率下结论。
+
+**未测 / 待补**：
+
+- **easy 80 题仍没跑 pass^3**，成本是单次的 3 倍（§8 第 3 条）。目前 easy 的稳定性只有报告题那 10 道有 pass^3 数据。
+- **兜底的「不误伤」只在这 25 题上验证过**。`min_score=0.16` 的标定余量只有约 4%（负样本最高 0.1578，可答题最低 0.1673），换语料或换重排模型必须重跑 `calibrate_min_score.py`；本轮没有重新标定，沿用的是 01:38 那次的阈值。
+- **negative 现在实际上没有被真正评测**。15/15 走同一条短路分支，judge 只是在确认「这段固定话术算拒答」——它永远算。要检验模型的开放式拒答能力，得把 `min_score` 临时调低让模型真的作答，或者补一批「重排分能过阈值、但知识库里其实没有答案」的灰区负样本（§8 第 5 条）。
+- **correctness=1 的三道题没有逐题归因**。`hard-qa-004`、`-014`、`-017` 稳定或部分稳定地停在部分正确，没有拆开看是检索少给了一个片段，还是 gold answer 的表述太窄导致语义正确被判 partial（§7 限制里提过这个已知偏差）。
+
 ## 6. 这些测试有什么用
 
 1. **改动前先知道现状。** M2 之前能说“easy Top-1 65.45%、Top-3 94.55%，hard Top-1 55.00%、Top-8 90.00%”，而不是“感觉挺准”；正是这几个数字指出了「文件能找到、片段找不到」。
@@ -873,7 +925,7 @@ k=5 多给了两条上下文，`hard-qa-011` 的 faithfulness 从 1 修到 2，�
 ## 8. 下一步
 
 1. ~~**M2 检索优化**：QA 感知切分、BM25 + 向量 RRF、交叉编码器重排。~~ 已完成，四段前后对比见 5.13。
-2. **M2 后重跑 pass^k**：5.8 的 hard pass^3（严格 88%、negative 60%）是 M2 之前的数据。检索修好后 `hard-qa-016` 这类波动源应该消失，需要用 `--repeat 3` 重新量化稳定性，这是当前评测侧最该补的一格。
+2. ~~**M2 后重跑 pass^k**~~（已完成，见 5.18）：hard overall 严格 pass^3 从 88% 到 100%、波动题 3 → 0，`hard-qa-016` 如预期消失。**但补出了一格新的**：negative 的 15/15 次运行全部走确定性兜底、不调生成模型，等于这 5 道题现在没有真的在评测模型的拒答能力，judge 只是在确认一段固定话术算拒答。要补就得临时调低 `min_score` 让模型真作答，或者加一批「重排分能过阈值、但知识库里其实没有答案」的灰区负样本——和第 5 条是同一件事。
 3. **easy 全量 pass^k**：easy 80 题仍只跑单次，成本约为单次 3 倍，适合按周或发版前跑。
 4. **扩大 hard split**：25 题能暴露问题，但样本仍小；下一步加入更多跨章节组合、近似干扰项和错别字问法，并把越界路由准确率纳入同一套基线。
 5. **越界边界补强**：`neg-004` / `neg-009` 已由确定性拒答覆盖（见 5.10），`hard-neg-001/002/003/004/005` 已由无证据兜底覆盖（见 5.13）；剩下的是「知识库里有相邻内容、但答案其实不存在」这类灰区，仍靠模型判断。

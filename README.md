@@ -203,10 +203,12 @@ python eval/run_answer_eval.py                   # easy 回答级基线（约 5 
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
   --out eval/results/hard_answer.json             # hard 回答级基线
 python eval/run_answer_eval.py --dataset eval/dataset_hard.jsonl \
-  --repeat 3 --out eval/results/hard_pass3.json   # pass^3
+  --repeat 3 --out eval/results/hard_pass3_post_m2.json   # hard pass^3（约 4 分钟）
 python eval/calibrate_min_score.py                # 标定无证据阈值（约 40 秒）
 python -m unittest discover -s tests              # 263 个单测，不需要 API Key
 ```
+
+`eval/results/hard_pass3.json` 是 M2 之前那一轮的留档，不要覆盖，前后对比靠它。
 
 `.github/workflows/ci.yml` 把上面**不调模型**的那一半接进了 GitHub Actions：263 个单测、easy 80 题与 hard 25 题的数据集校验、全量 `compileall`。检索基线、回答级基线和阈值标定都要调真实模型（既烧配额又需要真密钥），留在发版前人工跑。CI 里那个 `DASHSCOPE_API_KEY` 是占位值——`model/factory.py` 在导入那一刻就构造 `ChatTongyi`，不给这个变量连离线单测都起不来。
 
@@ -233,13 +235,31 @@ M2 之前的起点是 easy Span@1 65.45% / @3 94.55% / @8 98.18%，hard 55.00% /
 
 M2 前是 easy 完全正确 81.82% / 完全有据 100.00%，hard 通过率 95.00% / 完全正确 75.00% / 完全有据 90.00%。`qa-042`（拖布清洗频率）与 `hard-qa-016`（儿童锁 + App 防护）这两道旧基线里 Top-8 完全召不回片段的题，现在都是 Span@1 且 correctness=2。
 
+上表的「完全正确 / 完全有据」是**每题取一次代表性判分**，在 20 题的小集上一道题就是 5 个百分点，跨轮会晃：同一份代码、同一个 145 chunks 语料，`repeat=1` 那轮 hard 完全正确 95%（只有 `hard-qa-014` 落在 corr=1），本轮 `repeat=3` 的代表性判分是 85%（`hard-qa-004`、`-014`、`-017` 落在 corr=1），完全有据则反过来从 95% 变成 100%。逐轮拆开能看到判分在 corr=1/2 边界上抖动（`hard-qa-003` 三轮是 2/1/1，`hard-qa-004` 是 1/1/2）。**所以看稳定性要看下面的 pass^3，不要用单次跑的正确率下结论。**
+
+hard 集严格 pass^3（同题独立跑 3 次，3 次全过才算）：
+
+| 口径 | M2 前（66 chunks，纯向量） | M2 后（145 chunks，混合 + 重排 + 兜底） |
+|---|---|---|
+| overall 严格 pass^3 | 88.00%（22/25） | **100.00%（25/25）** |
+| answerable 严格 pass^3 | 95.00% | **100.00%** |
+| negative 严格 pass^3 | 60.00% | **100.00%** |
+| 平均单次通过率 | 94.67% | **100.00%** |
+| 波动题 | 3（`hard-qa-016`、`hard-neg-002`、`hard-neg-004`） | **0** |
+| negative 生成 P50 | 1234 ms | **352 ms** |
+
+两侧的 100% 来源不同，不能混为一谈：
+
+- **answerable 是真的变好了。** 唯一的旧失败题 `hard-qa-016`（家里有小孩，边刷和 App 分别要防什么）从 `pass_count=1`、correctness=0（判分理由：「未提及儿童锁和边刷防护」）变成 3/3、correctness=2。它属于 M2 前 Top-8 完全召不回片段的题，是检索侧修掉的，不是判分放松。20 题全部拿到 1–3 条真实引用，**无证据兜底一次都没有误伤可答题**。
+- **negative 的 100% 是确定性兜底换来的，不是模型更会拒答了。** 15 次运行全部返回同一段 `NO_EVIDENCE_ANSWER`、`sources=0`，生成 P50 从 1234 ms 掉到 352 ms——说明重排最高分低于 `min_score=0.16`，压根没调用生成模型。固定话术当然不会波动，所以严格 pass^3 是「结构上必然 100%」。M2 前会调模型，`hard-neg-002` 的第二次运行就在拒答之后补了「越障高度 1.5–2 cm」这种编造细节，那次判负。**把拒答从「指望模型自觉」改成「代码短路」，这才是波动归零的原因。**
+
 报告字段用确定性规则核对（标签 + 数值 + 单位归一），语义忠实度才交给 LLM judge。报告请求不让模型选工具，而是由 `is_report_query` 路由到 `report_pipeline`（解析 ID/月份 → 直接取数 → 记录注入提示词 → 一次写作）：字段完整率 100%，子流程执行率 100%，生成 P50 约 6.9 秒，首 token 约 0.44 秒。
 
 三个口径必须讲清，否则数字会被误读：
 
 1. **easy negative 的 100% 来自确定性越界路由**（15 道全被规则覆盖、0 token），不代表开放式边界已解决。
 2. **hard negative 现在多了一层无证据兜底**：5 道能力边界负样本的重排最高分（0.1261–0.1578）全部低于标定阈值 `min_score = 0.16`，返回固定话术且不调用生成模型；而 75 道可答题的最低分是 0.1673，两组可分但**余量只有约 4%**，换语料或换重排模型必须重跑 `calibrate_min_score.py`。
-3. **pass^k 数据还是 M2 之前的**：hard negative 单次 5/5、严格 pass^3 只有 **3/5（60%）**；M2 后本轮 `repeat=1`，稳定性尚未重新量化。easy 报告题严格 pass^3 100% 且零波动。
+3. **pass^3 已在 M2 后重测，但「零波动」有一半是兜底送的**：overall 严格 pass^3 从 88% 到 100%、波动题从 3 到 0；其中 answerable 侧是检索真修好了，negative 侧是 15/15 次运行都走确定性兜底、不调模型，模板天然不可能波动。所以这个 100% 说明的是「护栏稳」，不是「模型的拒答能力稳」。另外判分模型与生成模型同为 `qwen-max`，存在自偏好，correctness=1/2 的边界抖动就是证据；未做人工双标与一致性系数。easy 报告题严格 pass^3 100% 且零波动。
 
 另外记录两处 M2 的真实代价，不是纯赚：easy 完全有据从 100% 掉到 98.18%（`qa-017` 在更聚焦的上下文外补了一句「电池老化」）；`qa-023` 的片段排名从 @1 退到 @4（重排把同主题的「拖布清洗」块排到了带 gold 关键词的「晾干 / 每周维护」块前面）。k=3 vs k=5 做过敏感性对照，一升一降属噪声，保持 k=3。
 
