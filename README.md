@@ -24,7 +24,7 @@
 ## 目录结构
 
 ```text
-AI_RAG_Agent/
+RAG_Service_Agent/
 ├─ app.py                  # Streamlit 界面入口（可选）
 ├─ .github/workflows/ci.yml # CI：单测 + 两套数据集校验 + 全量编译（全部离线）
 ├─ server/
@@ -292,3 +292,7 @@ hard 集严格 pass^3（同题独立跑 3 次，3 次全过才算）：
 - **引用条目没有相关度分数**：重排被关掉或调用失败退回了融合序，`metadata` 里就没有 `rerank_score`。界面这时不显示分数，而不是显示 0（0 会被读成「完全不相关」）。看 trace 的 `rag:retrieve` span，`rerank` 字段是 `ok` / `fallback` / `disabled`。
 - **想换掉演示密码**：设环境变量 `AUTH_DEMO_PASSWORD` 后删掉 `checkpoints/auth.sqlite3` 重启（已存在的账号不会被覆盖）。
 - **端口被占用**：FastAPI 用 `--port 8001`；Streamlit 用 `streamlit run app.py --server.port 8502`。
+
+## 许可
+
+MIT。知识库语料（`data/*.txt`）与 `data/external/records.csv` 都是本项目自行整理的示例内容，「智扫通 / RoboCare」是虚构演示品牌，不指向任何真实厂商或在售型号。
